@@ -1,0 +1,306 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Single OWNER_EMAIL constant at the top
+    function ownerEmail() {
+      return "rubelahmedrex@gmail.com";
+    }
+
+    // Default deny all unmatched documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Authentication & Role Helpers
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner() {
+      return isSignedIn() && (
+        request.auth.token.email == ownerEmail() ||
+        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == "owner")
+      );
+    }
+
+    function isModerator() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+
+    function isAdmin() {
+      return isOwner() || isModerator();
+    }
+
+    // Helper for validating public admission application creations
+    function isValidApplicationCreate(data) {
+      let requiredKeys = [
+        'applicationNo', 'studentNameBn', 'birthDate', 'gender',
+        'appliedClass', 'fatherName', 'guardianPhone', 'address',
+        'admissionFee', 'status', 'createdAt'
+      ];
+      let allowedKeys = [
+        'applicationNo', 'studentNameBn', 'studentNameEn', 'birthDate', 'gender',
+        'appliedClass', 'previousSchool', 'previousResult', 'birthRegistrationNo',
+        'preferredGroup', 'fatherName', 'motherName', 'guardianPhone',
+        'address', 'photoUrl', 'admissionFee', 'trxId', 'paymentMethod', 'status',
+        'createdAt'
+      ];
+
+      return data.keys().hasAll(requiredKeys) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.status == "pending" &&
+             data.createdAt == request.time &&
+             data.admissionFee is number &&
+             data.applicationNo is string && data.applicationNo.size() >= 10 && data.applicationNo.size() <= 40 &&
+             data.studentNameBn is string && data.studentNameBn.size() >= 2 && data.studentNameBn.size() <= 100 &&
+             data.birthDate is string && data.birthDate.size() >= 4 && data.birthDate.size() <= 30 &&
+             data.gender is string && data.gender.size() >= 2 && data.gender.size() <= 30 &&
+             data.appliedClass is string && data.appliedClass.size() >= 1 && data.appliedClass.size() <= 50 &&
+             data.fatherName is string && data.fatherName.size() >= 2 && data.fatherName.size() <= 100 &&
+             data.guardianPhone is string && data.guardianPhone.size() == 11 &&
+             data.guardianPhone.matches('^01[3-9][0-9]{8}$') &&
+             data.address is string && data.address.size() >= 2 && data.address.size() <= 300 &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 307200)) &&
+             (!('studentNameEn' in data) || data.studentNameEn == null || (data.studentNameEn is string && data.studentNameEn.size() <= 100)) &&
+             (!('previousSchool' in data) || data.previousSchool == null || (data.previousSchool is string && data.previousSchool.size() <= 150)) &&
+             (!('previousResult' in data) || data.previousResult == null || (data.previousResult is string && data.previousResult.size() <= 60)) &&
+             (!('birthRegistrationNo' in data) || data.birthRegistrationNo == null || (data.birthRegistrationNo is string && data.birthRegistrationNo.size() <= 30)) &&
+             (!('preferredGroup' in data) || data.preferredGroup == null || (data.preferredGroup is string && data.preferredGroup.size() <= 50)) &&
+             (!('motherName' in data) || data.motherName == null || (data.motherName is string && data.motherName.size() <= 100)) &&
+             (!('trxId' in data) || data.trxId == null || (data.trxId is string && data.trxId.size() <= 60)) &&
+             (!('paymentMethod' in data) || data.paymentMethod == null || (data.paymentMethod is string && data.paymentMethod.size() <= 30));
+    }
+
+    // Helper for validating public minimal application_status creation
+    function isValidStatusCreate(data, appNumber) {
+      let allowedKeys = ['firstName', 'class', 'status', 'verifyHash', 'updatedAt'];
+      return data.keys().hasAll(allowedKeys) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.status == "pending" &&
+             data.updatedAt == request.time &&
+             data.firstName is string && data.firstName.size() >= 1 && data.firstName.size() <= 100 &&
+             data.class is string && data.class.size() >= 1 && data.class.size() <= 50 &&
+             data.verifyHash is string && data.verifyHash.size() >= 16 && data.verifyHash.size() <= 100;
+    }
+
+    // Admins Collection:
+    // Signed-in user may read only their own admin doc; only admins may list; only owner may write.
+    match /admins/{email} {
+      allow get: if isSignedIn() && (request.auth.token.email == email || isAdmin());
+      allow list: if isAdmin();
+      allow write: if isOwner();
+    }
+
+    // School Settings: Public read, written by admins
+    match /settings/school {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Fees & Payments: Public read (for /apply instructions), written by OWNER ONLY
+    match /settings/fees {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    // Appearance & Theme Configuration: Public read, written by OWNER ONLY with strict schema
+    function isValidAppearance(data) {
+      let allowedKeys = [
+        'theme', 'defaultMode', 'showModeToggle',
+        'useCustomBrandColor', 'brandColor',
+        'fontPair', 'radius', 'heroVariant',
+        'sectionOrder', 'hiddenSections',
+        'announcement', 'socialLinks',
+        'heroVideoUrl', 'virtualTourUrl',
+        'logoUrl', 'faviconUrl',
+        'updatedAt', 'updatedBy'
+      ];
+      return data.keys().hasOnly(allowedKeys) &&
+             (!('theme' in data) || data.theme in ['dawn', 'campus', 'meadow', 'ocean', 'royal', 'slate']) &&
+             (!('defaultMode' in data) || data.defaultMode in ['light', 'dark', 'system']) &&
+             (!('showModeToggle' in data) || data.showModeToggle is bool) &&
+             (!('useCustomBrandColor' in data) || data.useCustomBrandColor is bool) &&
+             (!('brandColor' in data) || data.brandColor == null || (data.brandColor is string && data.brandColor.matches('^#[0-9A-Fa-f]{6}$'))) &&
+             (!('fontPair' in data) || data.fontPair in ['heritage', 'modern', 'editorial']) &&
+             (!('radius' in data) || data.radius in ['sharp', 'rounded', 'soft']) &&
+             (!('heroVariant' in data) || data.heroVariant in ['split', 'editorial', 'collegiate']) &&
+             (!('sectionOrder' in data) || (data.sectionOrder is list && data.sectionOrder.size() <= 14)) &&
+             (!('hiddenSections' in data) || (data.hiddenSections is list && data.hiddenSections.size() <= 14)) &&
+             (!('announcement' in data) || data.announcement is map) &&
+             (!('socialLinks' in data) || data.socialLinks is map) &&
+             (!('heroVideoUrl' in data) || data.heroVideoUrl == null || (data.heroVideoUrl is string && data.heroVideoUrl.size() <= 500)) &&
+             (!('virtualTourUrl' in data) || data.virtualTourUrl == null || (data.virtualTourUrl is string && data.virtualTourUrl.size() <= 500)) &&
+             (!('logoUrl' in data) || data.logoUrl == null || (data.logoUrl is string && data.logoUrl.size() <= 307200)) &&
+             (!('faviconUrl' in data) || data.faviconUrl == null || (data.faviconUrl is string && data.faviconUrl.size() <= 153600)) &&
+             (!('updatedAt' in data) || data.updatedAt is string) &&
+             (!('updatedBy' in data) || data.updatedBy is string);
+    }
+
+    match /settings/appearance {
+      allow read: if true;
+      allow write: if isOwner() && isValidAppearance(request.resource.data);
+    }
+
+    // Notices: Public read, written by admins
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Staff / Teachers: Public read, written by admins
+    match /staff/{staffId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Gallery Photos: Public read, written by admins
+    match /gallery/{photoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Student Admission Applications:
+    // Public may create an application with strict validation and pending status.
+    // Full records are private: read, update, delete permitted only for verified admins.
+    match /applications/{applicationId} {
+      allow create: if isValidApplicationCreate(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Minimal Public Application Status (for parents to query status via /status)
+    // Public get by id allowed; listing prohibited (no enumeration).
+    // Public create allowed only when creating pending status matching doc id.
+    // Admin update and delete.
+    match /application_status/{appNumber} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isValidStatusCreate(request.resource.data, appNumber);
+      allow update, delete: if isAdmin();
+    }
+
+    // Campus Visit Bookings & Inquiries:
+    // Public may create only with strict schema validation, consent=true, status="new", server timestamp.
+    // Reading, status updates, and deletion are strictly restricted to verified admins.
+    function isValidId(docId) {
+      return docId is string && docId.size() >= 1 && docId.size() <= 128 && docId.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function isValidInquiryCreate(data) {
+      let requiredKeys = [
+        'parentName', 'phone', 'preferredDateTime', 'visitorCount', 'consent', 'status', 'createdAt'
+      ];
+      let allowedKeys = [
+        'parentName', 'phone', 'preferredDateTime', 'visitorCount', 'message', 'consent', 'status', 'createdAt'
+      ];
+      return data.keys().hasAll(requiredKeys) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.status == "new" &&
+             data.consent == true &&
+             data.createdAt == request.time &&
+             data.parentName is string && data.parentName.size() >= 2 && data.parentName.size() <= 100 &&
+             data.phone is string && data.phone.size() == 11 &&
+             data.phone.matches('^01[3-9][0-9]{8}$') &&
+             data.preferredDateTime is string && data.preferredDateTime.size() >= 4 && data.preferredDateTime.size() <= 80 &&
+             data.visitorCount is number && data.visitorCount >= 1 && data.visitorCount <= 20 &&
+             (!('message' in data) || data.message == null || (data.message is string && data.message.size() <= 500));
+    }
+
+    function isValidInquiryUpdate(data) {
+      return incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+             data.status in ['new', 'contacted', 'completed'] &&
+             data.updatedAt == request.time &&
+             data.parentName == existing().parentName &&
+             data.phone == existing().phone &&
+             data.consent == existing().consent &&
+             data.createdAt == existing().createdAt;
+    }
+
+    match /inquiries/{inquiryId} {
+      allow create: if isValidId(inquiryId) && isValidInquiryCreate(request.resource.data);
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin() && isValidInquiryUpdate(request.resource.data);
+    }
+
+    // Parent Testimonials: Public read, written by verified admins
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // SMS Automation & Deadline Reminder Settings (OWNER ONLY - no secrets allowed in schema)
+    function isValidSmsSettings(data) {
+      let requiredKeys = ['enabled', 'gateway', 'triggers', 'templates', 'reminderConfig'];
+      let allowedKeys = [
+        'enabled', 'gateway', 'senderId', 'secretConfiguredOnServer',
+        'triggers', 'templates', 'reminderConfig', 'updatedAt', 'updatedBy'
+      ];
+      return data.keys().hasAll(requiredKeys) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.enabled is bool &&
+             data.gateway in ['ssl_wireless', 'mims', 'bulksmsbd', 'custom'] &&
+             (!('senderId' in data) || (data.senderId is string && data.senderId.size() <= 30)) &&
+             (!('secretConfiguredOnServer' in data) || data.secretConfiguredOnServer is bool) &&
+             data.triggers is map &&
+             data.templates is map &&
+             data.reminderConfig is map &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 60)) &&
+             (!('updatedBy' in data) || (data.updatedBy is string && data.updatedBy.size() <= 120));
+    }
+
+    match /settings/sms {
+      allow read: if isOwner();
+      allow write: if isOwner() && isValidSmsSettings(request.resource.data);
+    }
+
+    // SMS Notification Queue & Logs:
+    // Admins (Owner/Moderator) can create validated notification triggers on status updates;
+    // ONLY Owner can read logs or delete entries; client updates forbidden (reserved for Cloud Functions).
+    function isValidNotificationQueueCreate(data) {
+      let requiredKeys = [
+        'eventType', 'channel', 'recipientPhone', 'recipientRole',
+        'message', 'gateway', 'status', 'createdByEmail', 'createdAt'
+      ];
+      let allowedKeys = [
+        'eventType', 'channel', 'recipientPhone', 'recipientRole', 'message',
+        'applicationId', 'applicationNo', 'studentName', 'appliedClass', 'targetStatus',
+        'gateway', 'status', 'createdByEmail', 'createdAt'
+      ];
+      return data.keys().hasAll(requiredKeys) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.createdAt == request.time &&
+             data.channel == 'sms' &&
+             data.status in ['queued', 'skipped_disabled'] &&
+             data.recipientRole in ['guardian', 'owner'] &&
+             data.eventType in [
+               'status_approved', 'status_rejected', 'status_waitlist',
+               'application_submitted', 'deadline_reminder'
+             ] &&
+             data.gateway in ['ssl_wireless', 'mims', 'bulksmsbd', 'custom'] &&
+             data.recipientPhone is string && data.recipientPhone.size() == 11 &&
+             data.recipientPhone.matches('^01[3-9][0-9]{8}$') &&
+             data.message is string && data.message.size() >= 5 && data.message.size() <= 480 &&
+             data.createdByEmail is string && data.createdByEmail == request.auth.token.email &&
+             (!('applicationId' in data) || data.applicationId == null || (data.applicationId is string && data.applicationId.size() <= 128)) &&
+             (!('applicationNo' in data) || data.applicationNo == null || (data.applicationNo is string && data.applicationNo.size() <= 40)) &&
+             (!('studentName' in data) || data.studentName == null || (data.studentName is string && data.studentName.size() <= 100)) &&
+             (!('appliedClass' in data) || data.appliedClass == null || (data.appliedClass is string && data.appliedClass.size() <= 50)) &&
+             (!('targetStatus' in data) || data.targetStatus == null || (data.targetStatus is string && data.targetStatus.size() <= 30));
+    }
+
+    match /notification_queue/{notifId} {
+      allow read, delete: if isOwner();
+      allow create: if isValidId(notifId) && isAdmin() && isValidNotificationQueueCreate(request.resource.data);
+      allow update: if false;
+    }
+
+    // Activity Logs: Owner reads, Admins create
+    match /activity_logs/{logId} {
+      allow read: if isOwner();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+  }
+}

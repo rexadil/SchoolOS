@@ -1,11 +1,55 @@
-<div align="center">
+# আশার আলো কিন্ডারগার্টেন স্কুল (Ashar Alo Kindergarten School)
+### দিনবাজার, ঘড়িয়ালডাঙ্গা, রাজারহাট, কুড়িগ্রাম, বাংলাদেশ
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+দ্বিভাষিক (বাংলা ও ইংরেজি) কিন্ডারগার্টেন ও প্রাথমিক বিদ্যালয় ওয়েবসাইট, অনলাইন ভর্তি পোর্টাল (`/apply`), ট্র্যাকিং স্ট্যাটাস পোর্টাল (`/status`), এবং সম্পূর্ণ অ্যাডমিন ড্যাশবোর্ড (`/admin`)।
 
-  <h1>Built with AI Studio</h2>
+---
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 📋 ফায়ারবেস সেটআপ চেকলিস্ট (Setup Checklist in Bangla)
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+বিদ্যালয়টির লাইভ ডেটাবেজ ও অ্যাডমিন প্যানেল সক্রিয় করতে নিচের ধাপগুলো অনুসরণ করুন:
 
-</div>
+1. **ফায়ারবেস প্রজেক্ট তৈরি (Firebase Project):**
+   - [Firebase Console](https://console.firebase.google.com) এ যান এবং একটি নতুন প্রজেক্ট তৈরি করুন।
+2. **গুগল সাইন-ইন চালু (Google Sign-In):**
+   - **Authentication** > **Sign-in method** এ গিয়ে **Google** প্রোভাইডার চালু (Enable) করুন এবং সাপোর্ট ইমেইল নির্বাচন করুন।
+3. **ফায়ারস্টোর ডাটাবেজ তৈরি (Firestore Database):**
+   - **Firestore Database** এ ক্লিক করে **Create Database** নির্বাচন করুন।
+   - লোকেশন হিসেবে কাছাকাছি রিজিয়ন (যেমন: `asia-southeast1`) নির্বাচন করুন।
+4. **কনফিগারেশন পেস্ট (Paste Keys):**
+   - প্রজেক্টের **Project settings** > **General** > **Your apps** থেকে Web App যোগ করে কনফিগারেশনটি `firebase-applet-config.json` ফাইলে পেস্ট করুন।
+5. **ডেমো মোড বন্ধ করা (Set demo: false):**
+   - `src/firebase/config.ts` ফাইলে গিয়ে `DEMO_MODE = false` নিশ্চিত করুন।
+6. **OWNER_EMAIL সেট করা (দুই স্থানে):**
+   - বিদ্যালয়ের প্রধান শিক্ষকের ইমেইল দুটি জায়গায় একই রাখুন:
+     1. `src/firebase/config.ts` এ `export const OWNER_EMAIL = 'rubelahmedrex@gmail.com';`
+     2. `firestore.rules` ফাইলের শীর্ষে `function ownerEmail() { return "rubelahmedrex@gmail.com"; }`
+7. **সিকিউরিটি রুলস ডিপ্লয় (Deploy Rules):**
+   - টার্মিনালে `firebase deploy --only firestore:rules` রান করে রুলস ডিপ্লয় করুন।
+8. **অথরাইজড ডোমেইন যুক্ত করা (Authorized Domains):**
+   - **Authentication** > **Settings** > **Authorized domains** ট্যাবে গিয়ে আপনার ক্লাউড রান বা কাস্টম ডোমেইনটি যুক্ত করুন (যেমন: `*.run.app`)।
+
+---
+
+## 🛡️ প্রধান কারিগরি বৈশিষ্ট্যসমূহ (Architecture & Security)
+
+1. **জিরো ফায়ারবেস স্টোরেজ (No Paid Storage Plan Needed):**
+   - ব্রাউজার-সাইড এইচটিএমএল ক্যানভাস ভিত্তিক `compressImage()` ইউটিলিটি।
+   - যেকোনো ১২ মেগাবাইট পর্যন্ত ছবি স্বয়ংক্রিয়ভাবে অপ্টিমাইজ হয়ে ফায়ারস্টোরে ডকুমেন্টের ভেতরে সেভ হয়:
+     - লোগো ও শিক্ষকের ছবি: সর্বোচ্চ ৪৮০px (~১২০-১৫০ KB)
+     - গ্যালারি ছবি: সর্বোচ্চ ১২৮০px (~২৩০ KB)
+     - শিক্ষার্থীর ছবি: সর্বোচ্চ ৪৮০px (~১৫০ KB)
+   - প্রতিটি ডকুমেন্ট ফায়ারস্টোরের ১ মেগাবাইট লিমিটের অনেক নিচে থাকে।
+2. **হার্ডেনড ফায়ারস্টোর রুলস (Hardened Firestore Security):**
+   - অ্যাডমিনদের জন্য `request.auth.token.email_verified == true` বাধ্যতামূলক।
+   - অ্যাপ্লিকেশন তৈরির ক্ষেত্রে শুধুমাত্র `status == 'pending'`, `createdAt == request.time`, সঠিক কীসমূহ (`hasOnly`), ১১ ডিজিটের বাংলাদেশি ফোন নম্বর এবং কঠোর ফিল্ড লেন্থ সীমাবদ্ধতা কার্যকর।
+   - ফি ও মডারেটর ম্যানেজমেন্ট শুধুমাত্র ওনারের জন্য সংরক্ষিত।
+3. **পাবলিক স্ট্যাটাস ভেরিফিকেশন (`/status`):**
+   - অভিভাবক আবেদন নম্বর ও ১১ ডিজিটের মোবাইল নম্বর দিলে সিস্টেম `"NUMBER:PHONE"` এর SHA-256 হ্যাশ গণনা করে `application_status/{number}` ডকুমেন্টের `verifyHash` এর সাথে মিলিয়ে স্ট্যাটাস প্রদর্শন করে।
+   - যেকোনো মিসম্যাচ বা অস্তিত্বহীন আবেদনে একই ধরনের নিরাপদ বার্তা প্রদর্শন করায় ডেটা গণনা (Enumeration Attack) রোধ হয়।
+4. **স্প্যাম প্রতিরোধ:**
+   - হিডেন হানিপট (Honeypot) ফিল্ড।
+   - ৬০ সেকেন্ডের ক্লায়েন্ট-সাইড কুল-ডাউন টাইমার।
+   - গত ২৪ ঘণ্টার মধ্যে একই শিক্ষার্থী ও মোবাইল নম্বরে ডুপ্লিকেট জমা প্রতিরোধ।
+5. **ডেমো মোড সেফটি ব্যানার:**
+   - ডেমো মোড চালু থাকলে এবং হোস্ট `localhost` না হলে প্রতিটি পেজের শীর্ষে লাল স্টিকি সতর্কবার্তা প্রদর্শিত হয়: `"ডেমো মোড — এখানে দেওয়া তথ্য সংরক্ষিত হবে না / Demo mode — data is NOT saved"`।

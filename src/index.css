@@ -1,0 +1,167 @@
+@import "tailwindcss";
+@import "./theme/tokens.css";
+
+@custom-variant dark (&:where([data-resolved-mode="dark"], [data-resolved-mode="dark"] *));
+
+@theme inline {
+  --color-surface: var(--token-surface);
+  --color-surface-2: var(--token-surface-2);
+  --color-surface-card: var(--token-surface-card);
+  --color-ink: var(--token-ink);
+  --color-ink-muted: var(--token-ink-muted);
+  --color-line: var(--token-line);
+
+  --color-primary-50: var(--token-primary-50);
+  --color-primary-100: var(--token-primary-100);
+  --color-primary-200: var(--token-primary-200);
+  --color-primary-300: var(--token-primary-300);
+  --color-primary-400: var(--token-primary-400);
+  --color-primary-500: var(--token-primary-500);
+  --color-primary-600: var(--token-primary-600);
+  --color-primary-700: var(--token-primary-700);
+  --color-primary-800: var(--token-primary-800);
+  --color-primary-900: var(--token-primary-900);
+  --color-on-primary: var(--token-on-primary);
+
+  --color-accent: var(--token-accent);
+  --color-on-accent: var(--token-on-accent);
+  --color-accent-soft: var(--token-accent-soft);
+  --color-on-accent-soft: var(--token-on-accent-soft);
+
+  --color-success: var(--token-success);
+  --color-on-success: var(--token-on-success);
+  --color-success-soft: var(--token-success-soft);
+  --color-on-success-soft: var(--token-on-success-soft);
+
+  --color-warning: var(--token-warning);
+  --color-on-warning: var(--token-on-warning);
+  --color-warning-soft: var(--token-warning-soft);
+  --color-on-warning-soft: var(--token-on-warning-soft);
+
+  --color-danger: var(--token-danger);
+  --color-on-danger: var(--token-on-danger);
+  --color-danger-soft: var(--token-danger-soft);
+  --color-on-danger-soft: var(--token-on-danger-soft);
+
+  --color-ring: var(--token-ring);
+
+  --radius-card: var(--radius-card);
+  --radius-btn: var(--radius-btn);
+  --radius-input: var(--radius-input);
+
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  html[data-resolved-mode="dark"] {
+    color-scheme: dark;
+  }
+
+  body {
+    font-family: var(--font-body);
+    line-height: 1.7; /* Crucial: 1.7 line-height prevents Bangla conjuncts (যুক্তাক্ষর) from clipping */
+    background-color: var(--token-surface);
+    color: var(--token-ink);
+  }
+
+  h1, h2, h3, h4, .font-heading {
+    font-family: var(--font-heading);
+    line-height: 1.35;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--token-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Semantic surface subtle texture pattern */
+.bg-cream-paper {
+  background-color: var(--token-surface);
+  background-image: radial-gradient(color-mix(in oklab, var(--token-line) 24%, transparent) 0.75px, transparent 0.75px);
+  background-size: 26px 26px;
+}
+
+/* Sunrise aura gradient using semantic tokens */
+.bg-sunrise-glow {
+  background: radial-gradient(
+    circle at 50% 30%,
+    color-mix(in oklab, var(--token-primary-400) 22%, transparent) 0%,
+    color-mix(in oklab, var(--token-accent) 12%, transparent) 38%,
+    transparent 70%
+  );
+}
+
+.bg-lantern-glow {
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--token-primary-400) 32%, transparent) 0%,
+    color-mix(in oklab, var(--token-primary-400) 8%, transparent) 60%,
+    transparent 80%
+  );
+}
+
+/* Winding path dash animation */
+@keyframes flowLight {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-path-flow {
+  stroke-dasharray: 12 8;
+  animation: flowLight 25s linear infinite;
+}
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-path-flow,
+  .animate-pulse,
+  .animate-bounce {
+    animation: none !important;
+  }
+}
+
+/* Hide scrollbars cleanly where horizontal chips overflow */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Print styles for Admission Token */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-admission-token, #printable-admission-token * {
+    visibility: visible;
+  }
+  #printable-admission-token {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: var(--token-surface-card) !important;
+    color: var(--token-ink) !important;
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "ASHAR ALO | আশার আলো — School & Admission Portal",
+  "short_name": "আশার আলো",
+  "description": "দ্বিভাষিক প্রাতিষ্ঠানিক ওয়েবসাইট, অনলাইন ভর্তি আবেদন ও ক্যাম্পাস ভিজিট বুকিং পোর্টাল।",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "lang": "bn",
+  "dir": "ltr",
+  "theme_color": "#B45309",
+  "background_color": "#FFFDF7",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="bn" data-theme="dawn" data-mode="light" data-resolved-mode="light" data-font-pair="heritage" data-radius="rounded" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASHAR ALO | আশার আলো — School &amp; Admission Portal</title>
+    <meta name="description" content="ASHAR ALO | আশার আলো — দ্বিভাষিক প্রাতিষ্ঠানিক ওয়েবসাইট ও অনলাইন ভর্তি পোর্টাল। Founded by 𝐑𝐄χ · An Independent Project by RΞX Labs." />
+    <meta name="author" content="𝐑𝐄χ · RΞX Labs" />
+    <meta name="theme-color" id="meta-theme-color" content="" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:site_name" content="ASHAR ALO | আশার আলো" />
+    <meta property="og:title" content="ASHAR ALO | আশার আলো — School &amp; Admission Portal" />
+    <meta property="og:description" content="ASHAR ALO | আশার আলো — দ্বিভাষিক প্রাতিষ্ঠানিক ওয়েবসাইট ও অনলাইন ভর্তি পোর্টাল। Founded by 𝐑𝐄χ · An Independent Project by RΞX Labs." />
+    <meta property="og:image" content="/images/hero_school_sunrise.webp" />
+    <meta property="og:url" content="" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ASHAR ALO | আশার আলো — School &amp; Admission Portal" />
+    <meta name="twitter:description" content="ASHAR ALO | আশার আলো — দ্বিভাষিক প্রাতিষ্ঠানিক ওয়েবসাইট ও অনলাইন ভর্তি পোর্টাল।" />
+    <meta name="twitter:image" content="/images/hero_school_sunrise.webp" />
+    <script>
+      /* Zero-flash pre-paint theme, mode, font-pair & radius initializer */
+      (function () {
+        try {
+          var validThemes = { dawn: 1, campus: 1, meadow: 1, ocean: 1, royal: 1, slate: 1 };
+          var validModes = { light: 1, dark: 1, system: 1 };
+          var validFonts = { heritage: 1, modern: 1, editorial: 1 };
+          var validRadii = { sharp: 1, rounded: 1, soft: 1 };
+          var rawApp = localStorage.getItem('school_theme_appearance');
+          var app = rawApp ? JSON.parse(rawApp) : {};
+          var theme = validThemes[app.theme] ? app.theme : 'dawn';
+          var showToggle = typeof app.showModeToggle === 'boolean' ? app.showModeToggle : true;
+          var defMode = validModes[app.defaultMode] ? app.defaultMode : 'light';
+          var userMode = showToggle ? localStorage.getItem('school_mode_preference') : null;
+          var mode = validModes[userMode] ? userMode : defMode;
+          var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var resolved = mode === 'system' ? (sysDark ? 'dark' : 'light') : mode;
+          var fontPair = validFonts[app.fontPair] ? app.fontPair : 'heritage';
+          var radius = validRadii[app.radius] ? app.radius : 'rounded';
+          var el = document.documentElement;
+          el.setAttribute('data-theme', theme);
+          el.setAttribute('data-mode', mode);
+          el.setAttribute('data-resolved-mode', resolved);
+          el.setAttribute('data-font-pair', fontPair);
+          el.setAttribute('data-radius', radius);
+          if (resolved === 'dark') el.classList.add('dark');
+          else el.classList.remove('dark');
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tiro+Bangla:ital@0;1&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-surface text-ink antialiased selection:bg-primary-200 selection:text-primary-900">
+    <div id="root"></div>
+    <script>
+      /**
+       * Global School Configuration Object (SCHOOL)
+       * Controls school level (kindergarten, primary, highschool, combined),
+       * active classes/levels, apply form fields, and institutional credentials.
+       * Identity and location details are managed via schoolConfig.ts.
+       */
+      window.SCHOOL = {
+        type: "kindergarten", // "kindergarten" | "primary" | "highschool" | "combined"
+        theme: "dawn", // "dawn" | "campus" | "meadow" | "ocean" | "royal" | "slate"
+        eiin: "123456",
+        mpoStatus: "এমপিওভুক্ত (MPO Enlisted)",
+        apply: {
+          fields: {
+            previousSchool: true,
+            previousResult: false,
+            birthRegistrationNo: false,
+            preferredGroup: false
+          }
+        }
+      };
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

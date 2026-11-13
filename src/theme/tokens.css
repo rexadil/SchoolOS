@@ -1,0 +1,547 @@
+/*
+ * Semantic Design Tokens — 6 Theme Packs x 2 Modes (Light & Dark)
+ * Applied immediately via [data-theme] and [data-resolved-mode] attributes on <html>.
+ */
+
+:root {
+  --font-heading: 'Noto Serif Bengali', 'Noto Serif', serif;
+  --font-body: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+
+  --radius-card: 1.5rem;
+  --radius-btn: 0.875rem;
+  --radius-input: 0.75rem;
+
+  /* Default Fallback: Dawn Light */
+  --token-surface: #FFFDF7;
+  --token-surface-2: #FEF6E4;
+  --token-surface-card: #FFFFFF;
+  --token-ink: #1C1917;
+  --token-ink-muted: #57534E;
+  --token-line: #8A7F6D;
+  --token-primary-50: #FFFBEB;
+  --token-primary-100: #FEF3C7;
+  --token-primary-200: #FDE68A;
+  --token-primary-300: #FCD34D;
+  --token-primary-400: #F59E0B;
+  --token-primary-500: #D97706;
+  --token-primary-600: #B45309;
+  --token-primary-700: #92400E;
+  --token-primary-800: #78350F;
+  --token-primary-900: #451A03;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #0F766E;
+  --token-on-accent: #FFFFFF;
+  --token-accent-soft: #CCFBF1;
+  --token-on-accent-soft: #115E59;
+  --token-success: #15803D;
+  --token-on-success: #FFFFFF;
+  --token-success-soft: #DCFCE7;
+  --token-on-success-soft: #14532D;
+  --token-warning: #A16207;
+  --token-on-warning: #FFFFFF;
+  --token-warning-soft: #FEF9C3;
+  --token-on-warning-soft: #713F12;
+  --token-danger: #BE123C;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #FFE4E6;
+  --token-on-danger-soft: #881337;
+  --token-ring: #B45309;
+}
+
+/* ==========================================
+ * THEME 1: DAWN (Warm Sunrise, Playful)
+ * ========================================== */
+:root[data-theme="dawn"][data-resolved-mode="light"] {
+  --token-surface: #FFFDF7;
+  --token-surface-2: #FEF6E4;
+  --token-surface-card: #FFFFFF;
+  --token-ink: #1C1917;
+  --token-ink-muted: #57534E;
+  --token-line: #8A7F6D;
+  --token-primary-50: #FFFBEB;
+  --token-primary-100: #FEF3C7;
+  --token-primary-200: #FDE68A;
+  --token-primary-300: #FCD34D;
+  --token-primary-400: #F59E0B;
+  --token-primary-500: #D97706;
+  --token-primary-600: #B45309;
+  --token-primary-700: #92400E;
+  --token-primary-800: #78350F;
+  --token-primary-900: #451A03;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #0F766E;
+  --token-on-accent: #FFFFFF;
+  --token-accent-soft: #CCFBF1;
+  --token-on-accent-soft: #115E59;
+  --token-success: #15803D;
+  --token-on-success: #FFFFFF;
+  --token-success-soft: #DCFCE7;
+  --token-on-success-soft: #14532D;
+  --token-warning: #A16207;
+  --token-on-warning: #FFFFFF;
+  --token-warning-soft: #FEF9C3;
+  --token-on-warning-soft: #713F12;
+  --token-danger: #BE123C;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #FFE4E6;
+  --token-on-danger-soft: #881337;
+  --token-ring: #B45309;
+}
+
+:root[data-theme="dawn"][data-resolved-mode="dark"] {
+  --token-surface: #14110F;
+  --token-surface-2: #211B17;
+  --token-surface-card: #1B1613;
+  --token-ink: #FAF5EE;
+  --token-ink-muted: #C7BDB1;
+  --token-line: #75685A;
+  --token-primary-50: #FFFBEB;
+  --token-primary-100: #FEF3C7;
+  --token-primary-200: #FDE68A;
+  --token-primary-300: #FCD34D;
+  --token-primary-400: #FBBF24;
+  --token-primary-500: #D97706;
+  --token-primary-600: #B45309;
+  --token-primary-700: #92400E;
+  --token-primary-800: #78350F;
+  --token-primary-900: #451A03;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #14B8A6;
+  --token-on-accent: #042F2E;
+  --token-accent-soft: #134E4A;
+  --token-on-accent-soft: #99F6E4;
+  --token-success: #16A34A;
+  --token-on-success: #052E16;
+  --token-success-soft: #14532D;
+  --token-on-success-soft: #BBF7D0;
+  --token-warning: #F59E0B;
+  --token-on-warning: #422006;
+  --token-warning-soft: #451A03;
+  --token-on-warning-soft: #FDE68A;
+  --token-danger: #E11D48;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #4C0519;
+  --token-on-danger-soft: #FECDD3;
+  --token-ring: #FBBF24;
+}
+
+/* ==========================================
+ * THEME 2: CAMPUS (Navy + Emerald, Collegiate)
+ * ========================================== */
+:root[data-theme="campus"][data-resolved-mode="light"] {
+  --token-surface: #F8FAFC;
+  --token-surface-2: #EBF0F6;
+  --token-surface-card: #FFFFFF;
+  --token-ink: #0F172A;
+  --token-ink-muted: #475569;
+  --token-line: #73839B;
+  --token-primary-50: #ECFDF5;
+  --token-primary-100: #D1FAE5;
+  --token-primary-200: #A7F3D0;
+  --token-primary-300: #6EE7B7;
+  --token-primary-400: #34D399;
+  --token-primary-500: #10B981;
+  --token-primary-600: #047857;
+  --token-primary-700: #065F46;
+  --token-primary-800: #064E3B;
+  --token-primary-900: #022C22;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #1E3A8A;
+  --token-on-accent: #FFFFFF;
+  --token-accent-soft: #DBEAFE;
+  --token-on-accent-soft: #1E3A8A;
+  --token-success: #047857;
+  --token-on-success: #FFFFFF;
+  --token-success-soft: #D1FAE5;
+  --token-on-success-soft: #064E3B;
+  --token-warning: #B45309;
+  --token-on-warning: #FFFFFF;
+  --token-warning-soft: #FEF3C7;
+  --token-on-warning-soft: #78350F;
+  --token-danger: #BE123C;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #FFE4E6;
+  --token-on-danger-soft: #881337;
+  --token-ring: #047857;
+}
+
+:root[data-theme="campus"][data-resolved-mode="dark"] {
+  --token-surface: #09111E;
+  --token-surface-2: #121E33;
+  --token-surface-card: #0F1A2B;
+  --token-ink: #F1F5F9;
+  --token-ink-muted: #A1B2C8;
+  --token-line: #596F8C;
+  --token-primary-50: #ECFDF5;
+  --token-primary-100: #D1FAE5;
+  --token-primary-200: #A7F3D0;
+  --token-primary-300: #6EE7B7;
+  --token-primary-400: #34D399;
+  --token-primary-500: #10B981;
+  --token-primary-600: #047857;
+  --token-primary-700: #065F46;
+  --token-primary-800: #064E3B;
+  --token-primary-900: #022C22;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #38BDF8;
+  --token-on-accent: #082F49;
+  --token-accent-soft: #172554;
+  --token-on-accent-soft: #BFDBFE;
+  --token-success: #34D399;
+  --token-on-success: #022C22;
+  --token-success-soft: #064E3B;
+  --token-on-success-soft: #A7F3D0;
+  --token-warning: #FBBF24;
+  --token-on-warning: #451A03;
+  --token-warning-soft: #451A03;
+  --token-on-warning-soft: #FDE68A;
+  --token-danger: #E11D48;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #4C0519;
+  --token-on-danger-soft: #FECDD3;
+  --token-ring: #34D399;
+}
+
+/* ==========================================
+ * THEME 3: MEADOW (Green, Nature)
+ * ========================================== */
+:root[data-theme="meadow"][data-resolved-mode="light"] {
+  --token-surface: #F7FBF7;
+  --token-surface-2: #EBF5EC;
+  --token-surface-card: #FFFFFF;
+  --token-ink: #112216;
+  --token-ink-muted: #3F5947;
+  --token-line: #6E8975;
+  --token-primary-50: #F0FDF4;
+  --token-primary-100: #DCFCE7;
+  --token-primary-200: #BBF7D0;
+  --token-primary-300: #86EFAC;
+  --token-primary-400: #4ADE80;
+  --token-primary-500: #22C55E;
+  --token-primary-600: #15803D;
+  --token-primary-700: #166534;
+  --token-primary-800: #14532D;
+  --token-primary-900: #052E16;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #0E7490;
+  --token-on-accent: #FFFFFF;
+  --token-accent-soft: #CFFAFE;
+  --token-on-accent-soft: #164E63;
+  --token-success: #15803D;
+  --token-on-success: #FFFFFF;
+  --token-success-soft: #DCFCE7;
+  --token-on-success-soft: #14532D;
+  --token-warning: #B45309;
+  --token-on-warning: #FFFFFF;
+  --token-warning-soft: #FEF3C7;
+  --token-on-warning-soft: #78350F;
+  --token-danger: #BE123C;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #FFE4E6;
+  --token-on-danger-soft: #881337;
+  --token-ring: #15803D;
+}
+
+:root[data-theme="meadow"][data-resolved-mode="dark"] {
+  --token-surface: #0B160E;
+  --token-surface-2: #132418;
+  --token-surface-card: #101E15;
+  --token-ink: #EDF7EF;
+  --token-ink-muted: #A5C2AC;
+  --token-line: #587860;
+  --token-primary-50: #F0FDF4;
+  --token-primary-100: #DCFCE7;
+  --token-primary-200: #BBF7D0;
+  --token-primary-300: #86EFAC;
+  --token-primary-400: #4ADE80;
+  --token-primary-500: #22C55E;
+  --token-primary-600: #15803D;
+  --token-primary-700: #166534;
+  --token-primary-800: #14532D;
+  --token-primary-900: #052E16;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #22D3EE;
+  --token-on-accent: #083344;
+  --token-accent-soft: #164E63;
+  --token-on-accent-soft: #A5F3FC;
+  --token-success: #4ADE80;
+  --token-on-success: #052E16;
+  --token-success-soft: #14532D;
+  --token-on-success-soft: #BBF7D0;
+  --token-warning: #FBBF24;
+  --token-on-warning: #451A03;
+  --token-warning-soft: #451A03;
+  --token-on-warning-soft: #FDE68A;
+  --token-danger: #E11D48;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #4C0519;
+  --token-on-danger-soft: #FECDD3;
+  --token-ring: #4ADE80;
+}
+
+/* ==========================================
+ * THEME 4: OCEAN (Blue/Teal, Modern)
+ * ========================================== */
+:root[data-theme="ocean"][data-resolved-mode="light"] {
+  --token-surface: #F6FAFD;
+  --token-surface-2: #E9F2F9;
+  --token-surface-card: #FFFFFF;
+  --token-ink: #0C1B2A;
+  --token-ink-muted: #43586D;
+  --token-line: #6D859B;
+  --token-primary-50: #F0F9FF;
+  --token-primary-100: #E0F2FE;
+  --token-primary-200: #BAE6FD;
+  --token-primary-300: #7DD3FC;
+  --token-primary-400: #38BDF8;
+  --token-primary-500: #0EA5E9;
+  --token-primary-600: #0369A1;
+  --token-primary-700: #075985;
+  --token-primary-800: #0C4A6E;
+  --token-primary-900: #082F49;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #0F766E;
+  --token-on-accent: #FFFFFF;
+  --token-accent-soft: #CCFBF1;
+  --token-on-accent-soft: #115E59;
+  --token-success: #047857;
+  --token-on-success: #FFFFFF;
+  --token-success-soft: #D1FAE5;
+  --token-on-success-soft: #064E3B;
+  --token-warning: #B45309;
+  --token-on-warning: #FFFFFF;
+  --token-warning-soft: #FEF3C7;
+  --token-on-warning-soft: #78350F;
+  --token-danger: #BE123C;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #FFE4E6;
+  --token-on-danger-soft: #881337;
+  --token-ring: #0369A1;
+}
+
+:root[data-theme="ocean"][data-resolved-mode="dark"] {
+  --token-surface: #08131E;
+  --token-surface-2: #102132;
+  --token-surface-card: #0D1B2A;
+  --token-ink: #ECF5FC;
+  --token-ink-muted: #A1B9CE;
+  --token-line: #56718B;
+  --token-primary-50: #F0F9FF;
+  --token-primary-100: #E0F2FE;
+  --token-primary-200: #BAE6FD;
+  --token-primary-300: #7DD3FC;
+  --token-primary-400: #38BDF8;
+  --token-primary-500: #0EA5E9;
+  --token-primary-600: #0369A1;
+  --token-primary-700: #075985;
+  --token-primary-800: #0C4A6E;
+  --token-primary-900: #082F49;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #2DD4BF;
+  --token-on-accent: #042F2E;
+  --token-accent-soft: #134E4A;
+  --token-on-accent-soft: #99F6E4;
+  --token-success: #34D399;
+  --token-on-success: #022C22;
+  --token-success-soft: #064E3B;
+  --token-on-success-soft: #A7F3D0;
+  --token-warning: #FBBF24;
+  --token-on-warning: #451A03;
+  --token-warning-soft: #451A03;
+  --token-on-warning-soft: #FDE68A;
+  --token-danger: #E11D48;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #4C0519;
+  --token-on-danger-soft: #FECDD3;
+  --token-ring: #38BDF8;
+}
+
+/* ==========================================
+ * THEME 5: ROYAL (Maroon + Gold, Traditional)
+ * ========================================== */
+:root[data-theme="royal"][data-resolved-mode="light"] {
+  --token-surface: #FDFBF9;
+  --token-surface-2: #F6ECE9;
+  --token-surface-card: #FFFFFF;
+  --token-ink: #211315;
+  --token-ink-muted: #5D4447;
+  --token-line: #8E6F72;
+  --token-primary-50: #FFF1F2;
+  --token-primary-100: #FFE4E6;
+  --token-primary-200: #FECDD3;
+  --token-primary-300: #FDA4AF;
+  --token-primary-400: #FB7185;
+  --token-primary-500: #E11D48;
+  --token-primary-600: #9F1239;
+  --token-primary-700: #881337;
+  --token-primary-800: #6D0F2D;
+  --token-primary-900: #4C0519;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #92400E;
+  --token-on-accent: #FFFFFF;
+  --token-accent-soft: #FEF3C7;
+  --token-on-accent-soft: #78350F;
+  --token-success: #15803D;
+  --token-on-success: #FFFFFF;
+  --token-success-soft: #DCFCE7;
+  --token-on-success-soft: #14532D;
+  --token-warning: #B45309;
+  --token-on-warning: #FFFFFF;
+  --token-warning-soft: #FEF3C7;
+  --token-on-warning-soft: #78350F;
+  --token-danger: #B91C1C;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #FEE2E2;
+  --token-on-danger-soft: #7F1D1D;
+  --token-ring: #9F1239;
+}
+
+:root[data-theme="royal"][data-resolved-mode="dark"] {
+  --token-surface: #160B0E;
+  --token-surface-2: #241318;
+  --token-surface-card: #1D0F13;
+  --token-ink: #FDF4F5;
+  --token-ink-muted: #CCAAB0;
+  --token-line: #805B62;
+  --token-primary-50: #FFF1F2;
+  --token-primary-100: #FFE4E6;
+  --token-primary-200: #FECDD3;
+  --token-primary-300: #FDA4AF;
+  --token-primary-400: #FB7185;
+  --token-primary-500: #E11D48;
+  --token-primary-600: #9F1239;
+  --token-primary-700: #881337;
+  --token-primary-800: #6D0F2D;
+  --token-primary-900: #4C0519;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #FBBF24;
+  --token-on-accent: #451A03;
+  --token-accent-soft: #451A03;
+  --token-on-accent-soft: #FDE68A;
+  --token-success: #4ADE80;
+  --token-on-success: #052E16;
+  --token-success-soft: #14532D;
+  --token-on-success-soft: #BBF7D0;
+  --token-warning: #FBBF24;
+  --token-on-warning: #451A03;
+  --token-warning-soft: #451A03;
+  --token-on-warning-soft: #FDE68A;
+  --token-danger: #DC2626;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #450A0A;
+  --token-on-danger-soft: #FECACA;
+  --token-ring: #FDA4AF;
+}
+
+/* ==========================================
+ * THEME 6: SLATE (Neutral, Minimal)
+ * ========================================== */
+:root[data-theme="slate"][data-resolved-mode="light"] {
+  --token-surface: #FAFAFA;
+  --token-surface-2: #EFEFF2;
+  --token-surface-card: #FFFFFF;
+  --token-ink: #111827;
+  --token-ink-muted: #4B5563;
+  --token-line: #767E8C;
+  --token-primary-50: #F8FAFC;
+  --token-primary-100: #F1F5F9;
+  --token-primary-200: #E2E8F0;
+  --token-primary-300: #CBD5E1;
+  --token-primary-400: #94A3B8;
+  --token-primary-500: #64748B;
+  --token-primary-600: #334155;
+  --token-primary-700: #1E293B;
+  --token-primary-800: #0F172A;
+  --token-primary-900: #020617;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #0F766E;
+  --token-on-accent: #FFFFFF;
+  --token-accent-soft: #CCFBF1;
+  --token-on-accent-soft: #115E59;
+  --token-success: #15803D;
+  --token-on-success: #FFFFFF;
+  --token-success-soft: #DCFCE7;
+  --token-on-success-soft: #14532D;
+  --token-warning: #B45309;
+  --token-on-warning: #FFFFFF;
+  --token-warning-soft: #FEF3C7;
+  --token-on-warning-soft: #78350F;
+  --token-danger: #BE123C;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #FFE4E6;
+  --token-on-danger-soft: #881337;
+  --token-ring: #334155;
+}
+
+:root[data-theme="slate"][data-resolved-mode="dark"] {
+  --token-surface: #0D0F12;
+  --token-surface-2: #171A20;
+  --token-surface-card: #13161B;
+  --token-ink: #F3F4F6;
+  --token-ink-muted: #A5ACB8;
+  --token-line: #5E6675;
+  --token-primary-50: #F8FAFC;
+  --token-primary-100: #F1F5F9;
+  --token-primary-200: #E2E8F0;
+  --token-primary-300: #CBD5E1;
+  --token-primary-400: #94A3B8;
+  --token-primary-500: #64748B;
+  --token-primary-600: #475569;
+  --token-primary-700: #334155;
+  --token-primary-800: #1E293B;
+  --token-primary-900: #0F172A;
+  --token-on-primary: #FFFFFF;
+  --token-accent: #2DD4BF;
+  --token-on-accent: #042F2E;
+  --token-accent-soft: #134E4A;
+  --token-on-accent-soft: #99F6E4;
+  --token-success: #4ADE80;
+  --token-on-success: #052E16;
+  --token-success-soft: #14532D;
+  --token-on-success-soft: #BBF7D0;
+  --token-warning: #FBBF24;
+  --token-on-warning: #451A03;
+  --token-warning-soft: #451A03;
+  --token-on-warning-soft: #FDE68A;
+  --token-danger: #E11D48;
+  --token-on-danger: #FFFFFF;
+  --token-danger-soft: #4C0519;
+  --token-on-danger-soft: #FECDD3;
+  --token-ring: #94A3B8;
+}
+
+/* ==========================================
+ * FONT PAIRS & CORNER RADIUS PRESETS
+ * ========================================== */
+:root[data-font-pair="heritage"] {
+  --font-heading: 'Noto Serif Bengali', 'Noto Serif', serif;
+  --font-body: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+}
+
+:root[data-font-pair="modern"] {
+  --font-heading: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+}
+
+:root[data-font-pair="editorial"] {
+  --font-heading: 'Tiro Bangla', 'Noto Serif Bengali', serif;
+  --font-body: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+}
+
+:root[data-radius="sharp"] {
+  --radius-card: 0.75rem;
+  --radius-btn: 0.5rem;
+  --radius-input: 0.5rem;
+}
+
+:root[data-radius="rounded"] {
+  --radius-card: 1.5rem;
+  --radius-btn: 0.875rem;
+  --radius-input: 0.75rem;
+}
+
+:root[data-radius="soft"] {
+  --radius-card: 2rem;
+  --radius-btn: 1.25rem;
+  --radius-input: 1rem;
+}

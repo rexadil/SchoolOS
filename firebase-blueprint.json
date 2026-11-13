@@ -1,0 +1,261 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrators (owner and moderators) who can access the dashboard",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Google email of admin" },
+        "role": { "type": "string", "enum": ["owner", "moderator"], "description": "Admin role level" },
+        "addedBy": { "type": "string", "description": "Email of admin who invited this user" },
+        "addedAt": { "type": "string", "description": "Timestamp when admin was added" }
+      },
+      "required": ["email", "role"]
+    },
+    "SchoolSettings": {
+      "title": "SchoolSettings",
+      "description": "Configurable school profile, branding, contacts, and hero banner texts",
+      "type": "object",
+      "properties": {
+        "nameBn": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "sloganBn": { "type": "string" },
+        "sloganEn": { "type": "string" },
+        "addressLine": { "type": "string" },
+        "phonePrimary": { "type": "string" },
+        "phoneSecondary": { "type": "string" },
+        "email": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "themeColor": { "type": "string" },
+        "heroTitleBn": { "type": "string" },
+        "heroTitleEn": { "type": "string" },
+        "heroSubtitleBn": { "type": "string" },
+        "heroSubtitleEn": { "type": "string" }
+      }
+    },
+    "FeeSettings": {
+      "title": "FeeSettings",
+      "description": "Class fees and mobile financial service payment details (editable by owner only)",
+      "type": "object",
+      "properties": {
+        "bkashNumber": { "type": "string" },
+        "nagadNumber": { "type": "string" },
+        "paymentInstructionsBn": { "type": "string" },
+        "paymentInstructionsEn": { "type": "string" },
+        "admissionFees": { "type": "object" },
+        "monthlyFees": { "type": "object" }
+      }
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "School notices and special admission circulars with banner switch",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "isAdmissionNotice": { "type": "boolean" },
+        "admissionActive": { "type": "boolean" },
+        "classesOpen": { "type": "array" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "content"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "Teachers and school leadership members",
+      "type": "object",
+      "properties": {
+        "nameBn": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "roleBn": { "type": "string" },
+        "roleEn": { "type": "string" },
+        "qualification": { "type": "string" },
+        "bio": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["nameBn", "roleBn"]
+    },
+    "GalleryPhoto": {
+      "title": "GalleryPhoto",
+      "description": "Campus, classroom, event, and activity photos",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["building", "classes", "events", "nature"] },
+        "photoUrl": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "photoUrl", "category"]
+    },
+    "StudentApplication": {
+      "title": "StudentApplication",
+      "description": "Public admission applications submitted by parents",
+      "type": "object",
+      "properties": {
+        "applicationNo": { "type": "string" },
+        "studentNameBn": { "type": "string" },
+        "studentNameEn": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "gender": { "type": "string" },
+        "appliedClass": { "type": "string" },
+        "previousSchool": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "motherName": { "type": "string" },
+        "guardianPhone": { "type": "string" },
+        "address": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "admissionFee": { "type": "number" },
+        "trxId": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "waitlist", "rejected"] },
+        "internalNotes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["applicationNo", "studentNameBn", "appliedClass", "guardianPhone", "fatherName"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Audit trail of admin operations seen by school owner",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "performedByEmail": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["action", "performedByEmail"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "Public campus visit bookings and admission inquiries submitted by parents",
+      "type": "object",
+      "properties": {
+        "parentName": { "type": "string" },
+        "phone": { "type": "string" },
+        "preferredDateTime": { "type": "string" },
+        "visitorCount": { "type": "number" },
+        "message": { "type": "string" },
+        "consent": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["new", "contacted", "completed"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["parentName", "phone", "preferredDateTime", "visitorCount", "consent", "status"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Verified parent feedback quotes showcased on the public site",
+      "type": "object",
+      "properties": {
+        "parentNameBn": { "type": "string" },
+        "parentNameEn": { "type": "string" },
+        "childGradeBn": { "type": "string" },
+        "childGradeEn": { "type": "string" },
+        "locationBn": { "type": "string" },
+        "locationEn": { "type": "string" },
+        "feedbackBn": { "type": "string" },
+        "feedbackEn": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["parentNameBn", "feedbackBn"]
+    },
+    "SmsSettings": {
+      "title": "SmsSettings",
+      "description": "Owner-only SMS gateway preferences, Bangla templates, trigger toggles, and admission deadline reminder configuration (no client secrets stored)",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "gateway": { "type": "string", "enum": ["ssl_wireless", "mims", "bulksmsbd", "custom"] },
+        "senderId": { "type": "string", "maxLength": 30 },
+        "secretConfiguredOnServer": { "type": "boolean" },
+        "triggers": { "type": "object" },
+        "templates": { "type": "object" },
+        "reminderConfig": { "type": "object" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["enabled", "gateway"]
+    },
+    "NotificationQueue": {
+      "title": "NotificationQueue",
+      "description": "Prepared SMS notification trigger payloads and audit logs for Cloud Function dispatch",
+      "type": "object",
+      "properties": {
+        "eventType": { "type": "string", "enum": ["status_approved", "status_rejected", "status_waitlist", "application_submitted", "deadline_reminder"] },
+        "channel": { "type": "string", "enum": ["sms"] },
+        "recipientPhone": { "type": "string", "pattern": "^01[3-9][0-9]{8}$" },
+        "recipientRole": { "type": "string", "enum": ["guardian", "owner"] },
+        "message": { "type": "string", "minLength": 5, "maxLength": 480 },
+        "applicationId": { "type": "string", "maxLength": 128 },
+        "applicationNo": { "type": "string", "maxLength": 40 },
+        "studentName": { "type": "string", "maxLength": 100 },
+        "appliedClass": { "type": "string", "maxLength": 50 },
+        "targetStatus": { "type": "string", "maxLength": 30 },
+        "gateway": { "type": "string", "enum": ["ssl_wireless", "mims", "bulksmsbd", "custom"] },
+        "status": { "type": "string", "enum": ["queued", "skipped_disabled", "sent", "failed"] },
+        "createdByEmail": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["eventType", "channel", "recipientPhone", "recipientRole", "message", "gateway", "status", "createdByEmail"]
+    }
+  },
+  "firestore": {
+    "/admins/{email}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Registered admins and moderators"
+    },
+    "/settings/school": {
+      "schema": { "$ref": "#/entities/SchoolSettings" },
+      "description": "Core school profile and styling"
+    },
+    "/settings/fees": {
+      "schema": { "$ref": "#/entities/FeeSettings" },
+      "description": "Class fees and bKash/Nagad mobile payment credentials"
+    },
+    "/settings/appearance": {
+      "schema": { "$ref": "#/entities/SchoolSettings" },
+      "description": "Theme pack, mode toggle policy, brand palette, typography, hero style, section layout, announcement bar, social links, video URLs, logo and favicon"
+    },
+    "/notices/{noticeId}": {
+      "schema": { "$ref": "#/entities/Notice" },
+      "description": "Public circulars and admission notices"
+    },
+    "/staff/{staffId}": {
+      "schema": { "$ref": "#/entities/Staff" },
+      "description": "Faculty profile records"
+    },
+    "/gallery/{photoId}": {
+      "schema": { "$ref": "#/entities/GalleryPhoto" },
+      "description": "School visual showcase items"
+    },
+    "/applications/{applicationId}": {
+      "schema": { "$ref": "#/entities/StudentApplication" },
+      "description": "Online student admission submissions"
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/Inquiry" },
+      "description": "Public campus visit booking inquiries"
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": { "$ref": "#/entities/Testimonial" },
+      "description": "Parent voices and community feedback"
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Admin activity trail"
+    },
+    "/settings/sms": {
+      "schema": { "$ref": "#/entities/SmsSettings" },
+      "description": "Owner-only SMS automation configuration and Bangla templates"
+    },
+    "/notification_queue/{notifId}": {
+      "schema": { "$ref": "#/entities/NotificationQueue" },
+      "description": "Prepared SMS notification payloads ready for Cloud Function delivery"
+    }
+  }
+}

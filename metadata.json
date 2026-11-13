@@ -1,0 +1,6 @@
+{
+  "name": "আশার আলো কিন্ডারগার্টেন স্কুল",
+  "description": "আশার আলো কিন্ডারগার্টেন স্কুল (দিনবাজার, রাজারহাট, কুড়িগ্রাম) এর দ্বিভাষিক প্রাতিষ্ঠানিক ওয়েবসাইট ও আলোর যাত্রা পাঠ্যক্রম প্রদর্শনী। Bilingual kindergarten and primary school template with Journey of Light curriculum visualizer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
