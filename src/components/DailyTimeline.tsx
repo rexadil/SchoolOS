@@ -47,7 +47,7 @@ export const DailyTimeline: React.FC = () => {
           
           {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto mb-14">
-            <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-on-success-soft uppercase tracking-widest mb-2 px-3 py-1 rounded-full bg-success-soft border border-success/30">
+            <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-on-success-soft uppercase tracking-widest mb-2 px-3 py-1 rounded-[var(--radius-btn)] bg-success-soft border border-success/30">
               <ShieldCheck className="w-4 h-4" />
               <span>{t('কেন আমাদের স্কুল নির্বাচন করবেন?', 'Why Choose Our Institution')}</span>
             </div>

@@ -98,11 +98,14 @@ export interface RadiusMeta {
   input: string;
 }
 
+export type AnnouncementStyle = 'primary' | 'accent' | 'warning' | 'success' | 'neutral';
+
 export interface AnnouncementConfig {
   enabled: boolean;
   textBn: string;
   textEn: string;
   linkUrl?: string;
+  style?: AnnouncementStyle;
 }
 
 export interface SocialLinksConfig {
@@ -149,6 +152,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
     textBn: 'নতুন শিক্ষাবর্ষের ভর্তি ফরম বিতরণ ও অনলাইন আবেদন চলছে।',
     textEn: 'Admissions for the upcoming academic session are now open online.',
     linkUrl: '#apply',
+    style: 'accent',
   },
   socialLinks: {
     facebook: 'https://facebook.com',
@@ -1032,6 +1036,13 @@ export function validateAndNormalizeAppearance(raw: unknown): AppearanceSettings
     ? obj.announcement
     : {}) as Record<string, unknown>;
 
+  const validAnnouncementStyles: AnnouncementStyle[] = ['primary', 'accent', 'warning', 'success', 'neutral'];
+  const announcementStyle: AnnouncementStyle = validAnnouncementStyles.includes(
+    rawAnnouncement.style as AnnouncementStyle
+  )
+    ? (rawAnnouncement.style as AnnouncementStyle)
+    : 'accent';
+
   const announcement: AnnouncementConfig = {
     enabled: typeof rawAnnouncement.enabled === 'boolean' ? rawAnnouncement.enabled : false,
     textBn:
@@ -1046,6 +1057,7 @@ export function validateAndNormalizeAppearance(raw: unknown): AppearanceSettings
       typeof rawAnnouncement.linkUrl === 'string'
         ? rawAnnouncement.linkUrl
         : DEFAULT_APPEARANCE.announcement.linkUrl,
+    style: announcementStyle,
   };
 
   const rawSocial = (obj.socialLinks && typeof obj.socialLinks === 'object'

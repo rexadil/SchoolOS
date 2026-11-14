@@ -27,11 +27,24 @@ import {
 interface ApplyPageProps {
   onGoHome: () => void;
   onNavigateStatus?: (appNo?: string) => void;
+  initialClass?: string;
 }
 
-export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus }) => {
+export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus, initialClass }) => {
   const { lang, t, formatNumber } = useLanguage();
   const { schoolSettings, feeSettings, levels, applyFields, submitApplication, admissionNotice } = useSchoolData();
+
+  const resolveClassKey = (raw?: string) => {
+    if (!raw || levels.length === 0) return levels[0]?.gradeKey || levels[0]?.name.en.split(' ')[0] || levels[0]?.id || 'Play';
+    const matched = levels.find(
+      (l) =>
+        l.id === raw ||
+        l.gradeKey === raw ||
+        l.name.bn === raw ||
+        l.name.en === raw
+    );
+    return matched ? matched.gradeKey || matched.name.en.split(' ')[0] || matched.id : levels[0]?.gradeKey || levels[0]?.name.en.split(' ')[0] || levels[0]?.id || 'Play';
+  };
 
   // Multi-step progress (1: Student, 2: Guardian & Photo, 3: Payment, 4: Success)
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -42,7 +55,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
     studentNameEn: '',
     birthDate: '',
     gender: 'ছেলে (Male)',
-    appliedClass: levels[0]?.gradeKey || levels[0]?.name.en.split(' ')[0] || levels[0]?.id || 'Play',
+    appliedClass: resolveClassKey(initialClass),
     previousSchool: '',
     previousResult: '',
     birthRegistrationNo: '',
@@ -67,15 +80,19 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
   const [generatedAppNo, setGeneratedAppNo] = useState('');
   const [consentAccepted, setConsentAccepted] = useState(false);
 
-  // Sync appliedClass if active levels change
+  // Sync appliedClass if initialClass or active levels change
   useEffect(() => {
     if (levels.length > 0) {
+      if (initialClass) {
+        setFormData((prev) => ({ ...prev, appliedClass: resolveClassKey(initialClass) }));
+        return;
+      }
       const activeKeys = levels.map((l) => l.gradeKey || l.name.en.split(' ')[0] || l.id);
       if (!activeKeys.includes(formData.appliedClass)) {
         setFormData((prev) => ({ ...prev, appliedClass: activeKeys[0] }));
       }
     }
-  }, [levels]);
+  }, [levels, initialClass]);
 
   // Dynamic class options derived from active levels
   const classOptions = levels.map((lvl) => ({
@@ -171,8 +188,8 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
     if (!validatePhone(formData.guardianPhone)) {
       setErrorMsg(
         t(
-          'অনুগ্রহ করে সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 01712345678)।',
-          'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 01712345678).'
+          'অনুগ্রহ করে সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)।',
+          'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX).'
         )
       );
       return;
@@ -193,7 +210,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
 
     // 1. Hidden honeypot check: if bot fills this field, silently exit
     if (honeypot.trim()) {
-      console.warn('Bot submission blocked via honeypot.');
+      if (import.meta.env.DEV) console.warn('Bot submission blocked via honeypot.');
       setSubmitting(true);
       setTimeout(() => {
         setSubmitting(false);
@@ -394,7 +411,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
               <button
                 type="button"
                 onClick={onGoHome}
-                className="w-full sm:w-auto px-6 py-3.5 bg-surface-2 hover:bg-primary-50 text-ink border border-line/30 font-bold text-sm rounded-[var(--radius-btn)] flex items-center justify-center gap-2 transition-colors"
+                className="w-full sm:w-auto min-h-[44px] px-6 py-3.5 bg-surface-2 hover:bg-surface text-ink border border-line/30 font-bold text-sm rounded-[var(--radius-btn)] flex items-center justify-center gap-2 transition-colors"
               >
                 <Home className="w-4 h-4 text-ink-muted" />
                 <span>{t('মূল পাতায় ফিরে যান', 'Back to Homepage')}</span>
@@ -492,7 +509,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                       type="text"
                       value={formData.studentNameBn}
                       onChange={(e) => setFormData({ ...formData, studentNameBn: e.target.value })}
-                      placeholder={t('যেমন: তানভীর আহমেদ অর্ণব', 'e.g. Tanvir Ahmed')}
+                      placeholder={t('শিক্ষার্থীর পূর্ণ নাম বাংলায় লিখুন', "Student's full name in Bengali")}
                       className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink placeholder:text-ink-muted text-sm focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none"
                     />
                   </div>
@@ -505,7 +522,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                       type="text"
                       value={formData.studentNameEn}
                       onChange={(e) => setFormData({ ...formData, studentNameEn: e.target.value })}
-                      placeholder="e.g. Tanvir Ahmed Ornob"
+                      placeholder={t('ইংরেজিতে পূর্ণ নাম (ঐচ্ছিক)', "Student's full name in English")}
                       className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink placeholder:text-ink-muted text-sm focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none"
                     />
                   </div>
@@ -585,7 +602,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                         type="text"
                         value={formData.birthRegistrationNo}
                         onChange={(e) => setFormData({ ...formData, birthRegistrationNo: e.target.value })}
-                        placeholder="e.g. 20124915220000123"
+                        placeholder={t('১৭ ডিজিটের জন্ম নিবন্ধন নম্বর', '17-digit Birth Registration No.')}
                         className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink placeholder:text-ink-muted text-sm focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none font-mono"
                       />
                     </div>
@@ -600,7 +617,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                         type="text"
                         value={formData.previousResult}
                         onChange={(e) => setFormData({ ...formData, previousResult: e.target.value })}
-                        placeholder="e.g. GPA 5.00 / Golden A+"
+                        placeholder={t('যেমন: GPA 4.50 / A', 'e.g. GPA 4.50 / A')}
                         className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink placeholder:text-ink-muted text-sm focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none"
                       />
                     </div>
@@ -682,7 +699,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                       type="tel"
                       value={formData.guardianPhone}
                       onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
-                      placeholder="01712345678"
+                      placeholder="01XXXXXXXXX"
                       className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink placeholder:text-ink-muted text-sm focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none font-mono"
                     />
                     <p className="text-[11px] text-ink-muted mt-1">
@@ -721,7 +738,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                     </div>
 
                     <div>
-                      <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-surface-2 hover:bg-primary-50 border border-line/30 text-ink text-xs font-bold rounded-[var(--radius-btn)] transition-colors ${compressingPhoto ? 'opacity-60 pointer-events-none' : ''}`}>
+                      <label className={`cursor-pointer min-h-[40px] inline-flex items-center gap-2 px-4 py-2 bg-surface-2 hover:bg-surface border border-line/35 text-ink text-xs font-bold rounded-[var(--radius-btn)] transition-colors ${compressingPhoto ? 'opacity-60 pointer-events-none' : ''}`}>
                         {compressingPhoto ? (
                           <Loader2 className="w-4 h-4 text-primary-600 animate-spin" />
                         ) : (
@@ -801,67 +818,80 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                 </div>
 
                 {/* Payment Numbers Box */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* bKash Card */}
-                  <div
-                    onClick={() => setFormData({ ...formData, paymentMethod: 'bkash' })}
-                    className={`cursor-pointer p-4 rounded-[var(--radius-card)] border-2 transition-all ${
-                      formData.paymentMethod === 'bkash'
-                        ? 'border-primary-600 bg-primary-50/40 dark:bg-surface-2 shadow-xs'
-                        : 'border-line/30 hover:border-primary-400'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-primary-700 dark:text-primary-300 uppercase">বিকাশ (bKash)</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyNumber('bkash', feeSettings.bkashNumber);
-                        }}
-                        className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-medium"
-                      >
-                        {copiedType === 'bkash' ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedType === 'bkash' ? t('কপি হয়েছে', 'Copied') : t('কপি', 'Copy')}</span>
-                      </button>
-                    </div>
-                    <span className="font-mono font-bold text-base text-ink block">
-                      {feeSettings.bkashNumber}
-                    </span>
+                {(!feeSettings.bkashNumber?.trim() && !feeSettings.nagadNumber?.trim()) ? (
+                  <div className="p-4 rounded-[var(--radius-card)] bg-warning-soft text-on-warning-soft border border-warning/35 text-xs sm:text-sm leading-[1.7]">
+                    {t(
+                      `অনলাইন পেমেন্টের আগে অনুগ্রহ করে বিদ্যালয়ের অফিস হটলাইন (${schoolSettings.phonePrimary}) নম্বরে কল করে বিকাশ/নগদ নম্বর নিশ্চিত হয়ে নিন।`,
+                      `Please confirm the official bKash/Nagad payment number with the school office (${schoolSettings.phonePrimary}) before sending the admission fee.`
+                    )}
                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* bKash Card */}
+                    {feeSettings.bkashNumber?.trim() && (
+                      <div
+                        onClick={() => setFormData({ ...formData, paymentMethod: 'bkash' })}
+                        className={`cursor-pointer p-4 rounded-[var(--radius-card)] border-2 transition-all ${
+                          formData.paymentMethod === 'bkash'
+                            ? 'border-primary-600 bg-primary-100/20 dark:bg-surface-2 shadow-xs'
+                            : 'border-line/30 hover:border-primary-400'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-primary-700 dark:text-primary-300 uppercase">বিকাশ (bKash)</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyNumber('bkash', feeSettings.bkashNumber);
+                            }}
+                            className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-medium"
+                          >
+                            {copiedType === 'bkash' ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedType === 'bkash' ? t('কপি হয়েছে', 'Copied') : t('কপি', 'Copy')}</span>
+                          </button>
+                        </div>
+                        <span className="font-mono font-bold text-base text-ink block">
+                          {feeSettings.bkashNumber}
+                        </span>
+                      </div>
+                    )}
 
-                  {/* Nagad Card */}
-                  <div
-                    onClick={() => setFormData({ ...formData, paymentMethod: 'nagad' })}
-                    className={`cursor-pointer p-4 rounded-[var(--radius-card)] border-2 transition-all ${
-                      formData.paymentMethod === 'nagad'
-                        ? 'border-accent bg-accent-soft/40 shadow-xs'
-                        : 'border-line/30 hover:border-accent'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-accent uppercase">নগদ (Nagad)</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyNumber('nagad', feeSettings.nagadNumber);
-                        }}
-                        className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-medium"
+                    {/* Nagad Card */}
+                    {feeSettings.nagadNumber?.trim() && (
+                      <div
+                        onClick={() => setFormData({ ...formData, paymentMethod: 'nagad' })}
+                        className={`cursor-pointer p-4 rounded-[var(--radius-card)] border-2 transition-all ${
+                          formData.paymentMethod === 'nagad'
+                            ? 'border-accent bg-accent-soft/40 shadow-xs'
+                            : 'border-line/30 hover:border-accent'
+                        }`}
                       >
-                        {copiedType === 'nagad' ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedType === 'nagad' ? t('কপি হয়েছে', 'Copied') : t('কপি', 'Copy')}</span>
-                      </button>
-                    </div>
-                    <span className="font-mono font-bold text-base text-ink block">
-                      {feeSettings.nagadNumber}
-                    </span>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-accent uppercase">নগদ (Nagad)</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyNumber('nagad', feeSettings.nagadNumber);
+                            }}
+                            className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-medium"
+                          >
+                            {copiedType === 'nagad' ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedType === 'nagad' ? t('কপি হয়েছে', 'Copied') : t('কপি', 'Copy')}</span>
+                          </button>
+                        </div>
+                        <span className="font-mono font-bold text-base text-ink block">
+                          {feeSettings.nagadNumber}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
 
                 {/* Instructions */}
                 <p className="text-xs text-ink-muted leading-[1.7]">
-                  {feeSettings.paymentInstructionsBn}
+                  {lang === 'bn' ? feeSettings.paymentInstructionsBn : feeSettings.paymentInstructionsEn}
                 </p>
 
                 {/* TrxID Input */}
@@ -873,7 +903,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                     type="text"
                     value={formData.trxId}
                     onChange={(e) => setFormData({ ...formData, trxId: e.target.value.toUpperCase() })}
-                    placeholder="e.g. 9J4K2L8M1N"
+                    placeholder={t('পেমেন্ট এসএমএসের TrxID লিখুন', 'Enter TrxID from confirmation SMS')}
                     className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 text-sm font-mono tracking-wider text-ink placeholder:text-ink-muted focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none uppercase bg-surface"
                   />
                   <p className="text-[11px] text-ink-muted mt-1">
@@ -1061,7 +1091,7 @@ export const ApplyPage: React.FC<ApplyPageProps> = ({ onGoHome, onNavigateStatus
                     <button
                       type="button"
                       onClick={() => window.print()}
-                      className="px-4 py-2.5 bg-surface-2 hover:bg-primary-50 text-ink border border-line/30 text-xs font-bold rounded-[var(--radius-btn)] flex items-center gap-1.5 transition-colors"
+                      className="min-h-[40px] px-4 py-2.5 bg-surface-2 hover:bg-surface text-ink border border-line/30 text-xs font-bold rounded-[var(--radius-btn)] flex items-center gap-1.5 transition-colors"
                     >
                       <Printer className="w-4 h-4 text-ink-muted" />
                       <span>{t('স্লিপ প্রিন্ট করুন', 'Print Application Slip')}</span>

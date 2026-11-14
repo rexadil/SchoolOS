@@ -88,6 +88,8 @@ export const VirtualTourSection: React.FC<VirtualTourSectionProps> = ({ onBookVi
                   <img
                     src="/images/hero_school_sunrise.webp"
                     alt={`${schoolName} Campus Preview`}
+                    width={1200}
+                    height={675}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSchoolData } from '../context/SchoolDataContext';
 import { Camera, Maximize2, X, ChevronRight } from 'lucide-react';
@@ -8,6 +8,15 @@ export const PhotoGallery: React.FC = () => {
   const { galleryPhotos } = useSchoolData();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (activeImageIndex === null) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveImageIndex(null);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [activeImageIndex]);
 
   const categoryLabels: Record<string, { bn: string; en: string }> = {
     building: { bn: 'ক্যাম্পাস ও ভবন', en: 'Campus' },
@@ -95,8 +104,19 @@ export const PhotoGallery: React.FC = () => {
 
         {/* Gallery Grid */}
         {filteredItems.length === 0 ? (
-          <div className="p-8 rounded-[var(--radius-card)] bg-surface-card border border-line/30 text-center text-sm text-ink-muted">
-            {t('এই বিভাগে এখনও কোনো ছবি যোগ করা হয়নি।', 'No photos available in this category yet.')}
+          <div className="p-10 rounded-[var(--radius-card)] bg-surface-card border border-line/30 text-center space-y-2.5 max-w-lg mx-auto">
+            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 flex items-center justify-center mx-auto text-primary-600">
+              <Camera className="w-6 h-6" />
+            </div>
+            <h3 className="font-heading font-bold text-base text-ink">
+              {t('এই বিভাগে এখনও কোনো ছবি নেই', 'No Photos in This Category Yet')}
+            </h3>
+            <p className="text-xs sm:text-sm text-ink-muted leading-[1.7]">
+              {t(
+                'অন্য বিভাগ নির্বাচন করে দেখুন অথবা অ্যাডমিন প্যানেল থেকে নতুন ক্যাম্পাস ছবি যুক্ত করুন।',
+                'Select another category tab or upload campus photos from the school admin panel.'
+              )}
+            </p>
           </div>
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -110,10 +130,15 @@ export const PhotoGallery: React.FC = () => {
                 <img
                   src={item.photoUrl}
                   alt={item.title}
+                  width={800}
+                  height={600}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   referrerPolicy="no-referrer"
                   loading="lazy"
                   decoding="async"
+                  onError={(e) => {
+                    e.currentTarget.src = '/images/classroom_learning.webp';
+                  }}
                 />
 
                 <div className="absolute inset-0 bg-ink/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -156,8 +181,8 @@ export const PhotoGallery: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveImageIndex(null)}
-              className="absolute top-4 right-4 z-20 p-2 rounded-full bg-surface-card/90 hover:bg-surface-2 text-ink border border-line/30 transition-colors shadow-md"
-              aria-label="Close Preview"
+              className="absolute top-4 right-4 z-20 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-surface-card/90 hover:bg-surface-2 text-ink border border-line/30 transition-colors shadow-md"
+              aria-label={t('ছবি বন্ধ করুন', 'Close Preview')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -166,6 +191,8 @@ export const PhotoGallery: React.FC = () => {
               <img
                 src={filteredItems[activeImageIndex].photoUrl}
                 alt={filteredItems[activeImageIndex].title}
+                width={1280}
+                height={800}
                 decoding="async"
                 className="w-full h-full object-contain"
                 referrerPolicy="no-referrer"

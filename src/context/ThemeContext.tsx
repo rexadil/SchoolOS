@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, DEMO_MODE, handleFirestoreError, OperationType } from '../firebase/config';
 import { useAuth } from './AuthContext';
@@ -164,7 +164,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setLoadingAppearance(false);
       },
       (err) => {
-        console.warn('Appearance snapshot fallback:', err);
+        if (import.meta.env.DEV) {
+          console.warn('Appearance snapshot fallback:', err);
+        }
         setLoadingAppearance(false);
       }
     );
@@ -237,19 +239,31 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await saveAppearance({ ...DEFAULT_APPEARANCE });
   }, [saveAppearance]);
 
+  const value = useMemo(
+    () => ({
+      appearance,
+      mode: effectiveMode,
+      resolvedMode,
+      cycleMode,
+      setUserMode,
+      saveAppearance,
+      resetAppearance,
+      loadingAppearance,
+    }),
+    [
+      appearance,
+      effectiveMode,
+      resolvedMode,
+      cycleMode,
+      setUserMode,
+      saveAppearance,
+      resetAppearance,
+      loadingAppearance,
+    ]
+  );
+
   return (
-    <ThemeContext.Provider
-      value={{
-        appearance,
-        mode: effectiveMode,
-        resolvedMode,
-        cycleMode,
-        setUserMode,
-        saveAppearance,
-        resetAppearance,
-        loadingAppearance,
-      }}
-    >
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

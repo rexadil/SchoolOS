@@ -46,8 +46,8 @@ export const VisitBookingForm: React.FC<VisitBookingFormProps> = ({ onSuccess, c
     if (!validatePhone(cleanPhone)) {
       setErrorMsg(
         t(
-          'অনুগ্রহ করে সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 01712345678)।',
-          'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 01712345678).'
+          'অনুগ্রহ করে সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)।',
+          'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX).'
         )
       );
       return;
@@ -184,7 +184,7 @@ export const VisitBookingForm: React.FC<VisitBookingFormProps> = ({ onSuccess, c
               maxLength={100}
               value={parentName}
               onChange={(e) => setParentName(e.target.value)}
-              placeholder={t('যেমন: মো. সাইদুর রহমান', 'e.g. Md. Saidur Rahman')}
+              placeholder={t('অভিভাবকের পূর্ণ নাম লিখুন', "Enter parent / guardian's full name")}
               className="w-full pl-9 pr-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink placeholder:text-ink-muted text-sm focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none"
             />
           </div>
@@ -201,7 +201,7 @@ export const VisitBookingForm: React.FC<VisitBookingFormProps> = ({ onSuccess, c
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="01712345678"
+              placeholder="01XXXXXXXXX"
               className="w-full pl-9 pr-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink placeholder:text-ink-muted text-sm font-mono focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none"
             />
           </div>

@@ -35,7 +35,7 @@ export const FloatingWhatsApp: React.FC = () => {
       rel="noopener noreferrer"
       aria-label={t(`${activeSchoolName} হোয়াটসঅ্যাপ হেল্পলাইন`, `Chat with ${activeSchoolName} on WhatsApp`)}
       title={t('হোয়াটসঅ্যাপে ভর্তি তথ্য জানুন', 'Chat on WhatsApp for admission help')}
-      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 h-12 px-4 rounded-full bg-success text-on-success shadow-xl border border-line/20 flex items-center gap-2 font-bold text-xs sm:text-sm hover:opacity-95 active:scale-95 transition-all print:hidden"
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 min-h-[48px] min-w-[48px] px-3.5 sm:px-4 rounded-full bg-success text-on-success shadow-xl ring-2 ring-surface/80 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm hover:opacity-95 active:scale-95 transition-all print:hidden"
     >
       <MessageCircle className="w-5 h-5 shrink-0" />
       <span className="hidden sm:inline whitespace-nowrap">

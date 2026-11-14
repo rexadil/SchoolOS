@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSchoolData } from '../context/SchoolDataContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { schoolConfig, SchoolType } from '../config/schoolConfig';
+import { SchoolType } from '../config/schoolConfig';
 import {
   Menu,
   X,
@@ -22,8 +22,6 @@ import {
 } from 'lucide-react';
 
 interface HeaderProps {
-  onOpenAdmission: () => void;
-  onOpenTemplateConfig: () => void;
   onOpenVisitModal?: () => void;
   onNavigateApply: () => void;
   onNavigateAdmin: () => void;
@@ -42,6 +40,25 @@ export const Header: React.FC<HeaderProps> = ({
   const { appearance, mode, cycleMode } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!presetDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setPresetDropdownOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPresetDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [presetDropdownOpen]);
 
   const isHighSchool = schoolType === 'highschool' || schoolType === 'combined';
   const activeLogoUrl = appearance.logoUrl || schoolSettings.logoUrl;
@@ -93,6 +110,8 @@ export const Header: React.FC<HeaderProps> = ({
               <img
                 src={activeLogoUrl}
                 alt={lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn}
+                width={44}
+                height={44}
                 decoding="async"
                 className="w-11 h-11 rounded-[var(--radius-btn)] object-contain p-0.5 shadow-sm group-hover:scale-105 transition-transform shrink-0 bg-surface-card border border-line/35"
               />
@@ -106,33 +125,17 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-heading font-bold text-base sm:text-xl tracking-tight leading-tight text-ink group-hover:text-primary-600 transition-colors">
-                  {lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn}
-                </span>
-                <span className="hidden 2xl:inline-block text-[10px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded bg-surface-2 border border-line/30 text-ink-muted">
-                  {schoolConfig.brand.productName}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-ink-muted mt-0.5">
-                <span>{schoolSettings.area}, {schoolSettings.upazila}</span>
-
+            <div className="flex flex-col min-w-0">
+              <span className="font-heading font-bold text-base sm:text-xl tracking-tight leading-tight text-ink group-hover:text-primary-600 transition-colors truncate max-w-[175px] sm:max-w-[280px] lg:max-w-none">
+                {lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn}
+              </span>
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-muted mt-0.5 truncate">
+                <span className="truncate">{schoolSettings.area}, {schoolSettings.upazila}</span>
                 {schoolSettings.eiin && (
                   <>
-                    <span aria-hidden="true" className="opacity-50">·</span>
-                    <span className="font-mono font-bold text-on-accent-soft bg-accent-soft px-1.5 py-0.2 rounded border border-line/25">
+                    <span aria-hidden="true" className="opacity-45 hidden sm:inline">·</span>
+                    <span className="hidden sm:inline font-mono font-semibold text-primary-700 dark:text-primary-300">
                       EIIN {schoolSettings.eiin}
-                    </span>
-                  </>
-                )}
-
-                {schoolSettings.mpoStatus && (
-                  <>
-                    <span aria-hidden="true" className="opacity-50 hidden md:inline">·</span>
-                    <span className="text-primary-700 dark:text-primary-300 hidden md:inline">
-                      {schoolSettings.mpoStatus}
                     </span>
                   </>
                 )}
@@ -141,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
           </a>
 
           {/* Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-5 text-sm font-semibold">
+          <nav aria-label={t('প্রধান মেনু', 'Main Navigation')} className="hidden lg:flex items-center gap-5 text-sm font-semibold">
             {navLinks.map((link) => (
               <a
                 key={link.href}
@@ -161,11 +164,12 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2 shrink-0">
 
             {/* Quick School Level Template Switcher */}
-            <div className="relative hidden xl:block">
+            <div ref={dropdownRef} className="relative hidden xl:block">
               <button
                 type="button"
                 onClick={() => setPresetDropdownOpen(!presetDropdownOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-[var(--radius-btn)] border bg-surface-2 border-line/35 text-ink hover:border-primary-600 transition-all"
+                aria-expanded={presetDropdownOpen}
+                className="min-h-[40px] flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-[var(--radius-btn)] border bg-surface-2 border-line/35 text-ink hover:border-primary-600 transition-all"
                 title={t('স্কুল স্তর প্রিসেট পরিবর্তন করুন', 'Switch School Level Preset')}
               >
                 <Layers className="w-3.5 h-3.5 text-primary-600" />
@@ -205,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={cycleMode}
-                className="p-2 rounded-[var(--radius-btn)] bg-surface-2 border border-line/35 text-ink hover:border-primary-600 hover:text-primary-600 transition-colors shrink-0"
+                className="min-w-[40px] min-h-[40px] p-2 rounded-[var(--radius-btn)] bg-surface-2 border border-line/35 text-ink hover:border-primary-600 hover:text-primary-600 transition-colors shrink-0 flex items-center justify-center"
                 title={modeLabel}
                 aria-label={modeLabel}
               >
@@ -218,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => setLang('bn')}
-                className={`px-2.5 sm:px-3 py-1 rounded-full transition-all duration-150 ${
+                className={`min-h-[34px] px-2.5 sm:px-3 py-1 rounded-full transition-all duration-150 ${
                   lang === 'bn'
                     ? 'bg-primary-600 text-on-primary shadow-xs font-bold'
                     : 'text-ink-muted hover:text-ink'
@@ -230,7 +234,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => setLang('en')}
-                className={`px-2.5 sm:px-3 py-1 rounded-full transition-all duration-150 ${
+                className={`min-h-[34px] px-2.5 sm:px-3 py-1 rounded-full transition-all duration-150 ${
                   lang === 'en'
                     ? 'bg-primary-600 text-on-primary shadow-xs font-bold'
                     : 'text-ink-muted hover:text-ink'
@@ -245,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onNavigateAdmin}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-[var(--radius-btn)] transition-colors border whitespace-nowrap shrink-0 ${
+              className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-[var(--radius-btn)] transition-colors border whitespace-nowrap shrink-0 ${
                 isAdmin
                   ? 'bg-success-soft text-on-success-soft border-success/40'
                   : 'bg-surface-2 text-ink border-line/35 hover:border-primary-600'
@@ -260,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onNavigateStatus}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-[var(--radius-btn)] transition-colors border border-line/35 bg-accent-soft text-on-accent-soft hover:opacity-90 whitespace-nowrap shrink-0"
+              className="hidden sm:flex min-h-[40px] items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-[var(--radius-btn)] transition-colors border border-line/35 bg-accent-soft text-on-accent-soft hover:opacity-90 whitespace-nowrap shrink-0"
               title={t('ভর্তি আবেদনের বর্তমান অবস্থা', 'Check Admission Status')}
             >
               <Search className="w-3.5 h-3.5" />
@@ -271,7 +275,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onNavigateApply}
-              className="px-4 py-2 text-xs sm:text-sm font-bold bg-primary-600 hover:bg-primary-700 text-on-primary rounded-[var(--radius-btn)] shadow-xs hover:shadow-md active:scale-98 transition-all duration-150 flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              className="min-h-[40px] px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold bg-primary-600 hover:bg-primary-700 text-on-primary rounded-[var(--radius-btn)] shadow-xs hover:shadow-md active:scale-98 transition-all duration-150 flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{t('ভর্তি আবেদন', 'Apply Now')}</span>
@@ -281,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-ink hover:text-primary-600 rounded-[var(--radius-btn)] transition-colors"
+              className="lg:hidden min-w-[44px] min-h-[44px] p-2 text-ink hover:text-primary-600 rounded-[var(--radius-btn)] transition-colors flex items-center justify-center"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -338,10 +342,10 @@ export const Header: React.FC<HeaderProps> = ({
                   setMobileMenuOpen(false);
                   onNavigateApply();
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold bg-primary-600 hover:bg-primary-700 text-on-primary rounded-[var(--radius-btn)] shadow-xs"
+                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold bg-primary-600 hover:bg-primary-700 text-on-primary rounded-[var(--radius-btn)] shadow-xs"
               >
                 <FileText className="w-4 h-4" />
-                <span>{t('অনলাইন ভর্তি ফরম (/apply)', 'Online Admission Form (/apply)')}</span>
+                <span>{t('অনলাইন ভর্তি ফরম', 'Online Admission Form')}</span>
               </button>
 
               {onOpenVisitModal && (
@@ -351,7 +355,7 @@ export const Header: React.FC<HeaderProps> = ({
                     setMobileMenuOpen(false);
                     onOpenVisitModal();
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-surface-2 hover:bg-surface-card text-ink rounded-[var(--radius-btn)] border border-line/35"
+                  className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-surface-2 hover:bg-surface-card text-ink rounded-[var(--radius-btn)] border border-line/35"
                 >
                   <CalendarCheck className="w-4 h-4 text-accent" />
                   <span>{t('ক্যাম্পাস ভিজিট বুক করুন', 'Book a Campus Visit')}</span>
@@ -364,10 +368,10 @@ export const Header: React.FC<HeaderProps> = ({
                   setMobileMenuOpen(false);
                   if (onNavigateStatus) onNavigateStatus();
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-on-accent-soft bg-accent-soft rounded-[var(--radius-btn)] border border-line/25"
+                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-on-accent-soft bg-accent-soft rounded-[var(--radius-btn)] border border-line/25"
               >
                 <Search className="w-4 h-4" />
-                <span>{t('ভর্তি আবেদনের অবস্থা (/status)', 'Application Status (/status)')}</span>
+                <span>{t('ভর্তি আবেদনের অবস্থা যাচাই', 'Check Application Status')}</span>
               </button>
 
               <button
@@ -376,15 +380,15 @@ export const Header: React.FC<HeaderProps> = ({
                   setMobileMenuOpen(false);
                   onNavigateAdmin();
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-[var(--radius-btn)] border border-line/35 bg-surface-2 hover:bg-surface-card text-ink"
+                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-[var(--radius-btn)] border border-line/35 bg-surface-2 hover:bg-surface-card text-ink"
               >
                 <ShieldCheck className="w-4 h-4 text-primary-600" />
-                <span>{t('প্রশাসক ড্যাশবোর্ড (/admin)', 'Admin Dashboard (/admin)')}</span>
+                <span>{t('অ্যাডমিন পোর্টাল', 'Admin Dashboard')}</span>
               </button>
 
               <a
                 href={`tel:${schoolSettings.phonePrimary}`}
-                className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium bg-surface-2 rounded-[var(--radius-btn)] border border-line/30 text-ink"
+                className="min-h-[44px] flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium bg-surface-2 rounded-[var(--radius-btn)] border border-line/30 text-ink"
               >
                 <Phone className="w-3.5 h-3.5 text-primary-600" />
                 <span>{schoolSettings.phonePrimary}</span>

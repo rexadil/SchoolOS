@@ -9,21 +9,43 @@ import { syncSeoHeadAndSchema, SeoRoute } from './utils/seo';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { StatsStrip } from './components/StatsStrip';
-import { CurriculumJourney } from './components/CurriculumJourney';
-import { AdmissionBanner } from './components/AdmissionBanner';
-import { DailyTimeline } from './components/DailyTimeline';
-import { VirtualTourSection } from './components/VirtualTourSection';
-import { TeacherSection } from './components/TeacherSection';
-import { ParentTestimonials } from './components/ParentTestimonials';
-import { PhotoGallery } from './components/PhotoGallery';
-import { ContactSection } from './components/ContactSection';
-import { Footer } from './components/Footer';
-import { AdmissionModal } from './components/AdmissionModal';
-import { VisitBookingModal } from './components/VisitBookingModal';
-import { SchoolTemplateModal } from './components/SchoolTemplateModal';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AlertTriangle, Megaphone, X, ArrowRight, Loader2 } from 'lucide-react';
+
+const CurriculumJourney = lazy(() =>
+  import('./components/CurriculumJourney').then((m) => ({ default: m.CurriculumJourney }))
+);
+const AdmissionBanner = lazy(() =>
+  import('./components/AdmissionBanner').then((m) => ({ default: m.AdmissionBanner }))
+);
+const DailyTimeline = lazy(() =>
+  import('./components/DailyTimeline').then((m) => ({ default: m.DailyTimeline }))
+);
+const VirtualTourSection = lazy(() =>
+  import('./components/VirtualTourSection').then((m) => ({ default: m.VirtualTourSection }))
+);
+const TeacherSection = lazy(() =>
+  import('./components/TeacherSection').then((m) => ({ default: m.TeacherSection }))
+);
+const ParentTestimonials = lazy(() =>
+  import('./components/ParentTestimonials').then((m) => ({ default: m.ParentTestimonials }))
+);
+const PhotoGallery = lazy(() =>
+  import('./components/PhotoGallery').then((m) => ({ default: m.PhotoGallery }))
+);
+const ContactSection = lazy(() =>
+  import('./components/ContactSection').then((m) => ({ default: m.ContactSection }))
+);
+const Footer = lazy(() =>
+  import('./components/Footer').then((m) => ({ default: m.Footer }))
+);
+const VisitBookingModal = lazy(() =>
+  import('./components/VisitBookingModal').then((m) => ({ default: m.VisitBookingModal }))
+);
+const SchoolTemplateModal = lazy(() =>
+  import('./components/SchoolTemplateModal').then((m) => ({ default: m.SchoolTemplateModal }))
+);
 
 const AdminDashboard = lazy(() =>
   import('./pages/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
@@ -54,7 +76,6 @@ function SchoolApp() {
   });
 
   const [prefilledAppNo, setPrefilledAppNo] = useState<string>('');
-  const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname.toLowerCase();
@@ -132,11 +153,6 @@ function SchoolApp() {
     }
   };
 
-  const handleOpenAdmissionModal = (className?: string) => {
-    setSelectedClassForAdmission(className);
-    setIsAdmissionModalOpen(true);
-  };
-
   const handleScrollToJourney = () => {
     const el = document.getElementById('journey');
     if (el) {
@@ -196,6 +212,12 @@ function SchoolApp() {
     }
   };
 
+  const sectionFallback = (
+    <div className="py-12 flex items-center justify-center bg-surface text-ink-muted">
+      <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
+    </div>
+  );
+
   const renderHomeSection = (key: HomeSectionKey) => {
     if (appearance.hiddenSections.includes(key)) return null;
 
@@ -213,35 +235,61 @@ function SchoolApp() {
         return <StatsStrip key="stats" />;
       case 'admissionBanner':
         return (
-          <AdmissionBanner
-            key="admissionBanner"
-            onOpenAdmission={() => navigateTo('apply')}
-            onNavigateStatus={() => navigateTo('status')}
-            onBookVisit={openVisitModal}
-          />
+          <Suspense key="admissionBanner" fallback={sectionFallback}>
+            <AdmissionBanner
+              onOpenAdmission={() => navigateTo('apply')}
+              onNavigateStatus={() => navigateTo('status')}
+              onBookVisit={openVisitModal}
+            />
+          </Suspense>
         );
       case 'journey':
         return (
-          <CurriculumJourney
-            key="journey"
-            onSelectClassForAdmission={(className) => {
-              setSelectedClassForAdmission(className);
-              navigateTo('apply');
-            }}
-          />
+          <Suspense key="journey" fallback={sectionFallback}>
+            <CurriculumJourney
+              onSelectClassForAdmission={(className) => {
+                setSelectedClassForAdmission(className);
+                navigateTo('apply');
+              }}
+            />
+          </Suspense>
         );
       case 'dailyLife':
-        return <DailyTimeline key="dailyLife" />;
+        return (
+          <Suspense key="dailyLife" fallback={sectionFallback}>
+            <DailyTimeline />
+          </Suspense>
+        );
       case 'virtualTour':
-        return <VirtualTourSection key="virtualTour" onBookVisit={openVisitModal} />;
+        return (
+          <Suspense key="virtualTour" fallback={null}>
+            <VirtualTourSection onBookVisit={openVisitModal} />
+          </Suspense>
+        );
       case 'teachers':
-        return <TeacherSection key="teachers" />;
+        return (
+          <Suspense key="teachers" fallback={sectionFallback}>
+            <TeacherSection />
+          </Suspense>
+        );
       case 'testimonials':
-        return <ParentTestimonials key="testimonials" />;
+        return (
+          <Suspense key="testimonials" fallback={null}>
+            <ParentTestimonials />
+          </Suspense>
+        );
       case 'gallery':
-        return <PhotoGallery key="gallery" />;
+        return (
+          <Suspense key="gallery" fallback={sectionFallback}>
+            <PhotoGallery />
+          </Suspense>
+        );
       case 'contact':
-        return <ContactSection key="contact" />;
+        return (
+          <Suspense key="contact" fallback={sectionFallback}>
+            <ContactSection />
+          </Suspense>
+        );
       default:
         return null;
     }
@@ -282,7 +330,19 @@ function SchoolApp() {
 
       {/* Optional Announcement Bar */}
       {showAnnouncement && (
-        <div className="w-full bg-accent text-on-accent text-xs sm:text-sm font-semibold py-2 px-4 border-b border-line/20">
+        <div
+          className={`w-full text-xs sm:text-sm font-semibold py-2 px-4 border-b transition-colors ${
+            appearance.announcement.style === 'primary'
+              ? 'bg-primary-600 text-on-primary border-primary-700/30'
+              : appearance.announcement.style === 'warning'
+              ? 'bg-warning-soft text-on-warning-soft border-warning/30'
+              : appearance.announcement.style === 'success'
+              ? 'bg-success-soft text-on-success-soft border-success/30'
+              : appearance.announcement.style === 'neutral'
+              ? 'bg-surface-2 text-ink border-line/35'
+              : 'bg-accent text-on-accent border-line/20'
+          }`}
+        >
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 mx-auto text-center">
               <Megaphone className="w-4 h-4 shrink-0" />
@@ -324,6 +384,7 @@ function SchoolApp() {
           <ApplyPage
             onGoHome={() => navigateTo('home')}
             onNavigateStatus={(appNo) => navigateTo('status', appNo)}
+            initialClass={selectedClassForAdmission}
           />
         </Suspense>
       )}
@@ -343,8 +404,6 @@ function SchoolApp() {
       {currentRoute === 'home' && (
         <>
           <Header
-            onOpenAdmission={() => handleOpenAdmissionModal()}
-            onOpenTemplateConfig={() => setIsTemplateModalOpen(true)}
             onOpenVisitModal={openVisitModal}
             onNavigateApply={() => navigateTo('apply')}
             onNavigateAdmin={() => navigateTo('admin')}
@@ -355,30 +414,33 @@ function SchoolApp() {
             {appearance.sectionOrder.map((secKey) => renderHomeSection(secKey))}
           </main>
 
-          <Footer
-            onOpenAdmission={() => handleOpenAdmissionModal()}
-            onOpenTemplateConfig={() => setIsTemplateModalOpen(true)}
-            onOpenVisitModal={openVisitModal}
-            onNavigateApply={() => navigateTo('apply')}
-            onNavigateAdmin={() => navigateTo('admin')}
-            onNavigateStatus={() => navigateTo('status')}
-          />
+          <Suspense fallback={null}>
+            <Footer
+              onOpenTemplateConfig={() => setIsTemplateModalOpen(true)}
+              onOpenVisitModal={openVisitModal}
+              onNavigateApply={() => navigateTo('apply')}
+              onNavigateAdmin={() => navigateTo('admin')}
+              onNavigateStatus={() => navigateTo('status')}
+            />
+          </Suspense>
 
-          <AdmissionModal
-            isOpen={isAdmissionModalOpen}
-            onClose={() => setIsAdmissionModalOpen(false)}
-            preselectedClass={selectedClassForAdmission}
-          />
+          {isVisitModalOpen && (
+            <Suspense fallback={null}>
+              <VisitBookingModal
+                isOpen={isVisitModalOpen}
+                onClose={closeVisitModal}
+              />
+            </Suspense>
+          )}
 
-          <VisitBookingModal
-            isOpen={isVisitModalOpen}
-            onClose={closeVisitModal}
-          />
-
-          <SchoolTemplateModal
-            isOpen={isTemplateModalOpen}
-            onClose={() => setIsTemplateModalOpen(false)}
-          />
+          {isTemplateModalOpen && (
+            <Suspense fallback={null}>
+              <SchoolTemplateModal
+                isOpen={isTemplateModalOpen}
+                onClose={() => setIsTemplateModalOpen(false)}
+              />
+            </Suspense>
+          )}
         </>
       )}
 

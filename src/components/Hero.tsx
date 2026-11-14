@@ -40,27 +40,31 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
   const firstClass = levels[0]?.name[lang].split(' ')[0] || (lang === 'bn' ? 'প্লে' : 'Play');
   const lastClass = levels[levels.length - 1]?.name[lang].split(' ')[0] || (lang === 'bn' ? '৫ম' : 'Class 5');
 
+  const customHeadline = (lang === 'bn' ? schoolSettings.heroTitleBn : schoolSettings.heroTitleEn)?.trim();
+  const customSubtitle = (lang === 'bn' ? schoolSettings.heroSubtitleBn : schoolSettings.heroSubtitleEn)?.trim();
+  const shortBrand = (lang === 'bn' ? schoolSettings.shortNameBn : schoolSettings.shortNameEn)?.trim() || schoolConfig.brand.productName;
+
   const kicker = (
-    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-semibold tracking-wide text-primary-700 dark:text-primary-300">
-      <span className="px-2 py-0.5 rounded-[var(--radius-btn)] bg-surface-2 border border-line/30 text-[11px] font-bold tracking-wider uppercase text-ink">
-        {schoolConfig.brand.productName}
+    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs sm:text-sm font-semibold tracking-wide text-primary-700 dark:text-primary-300">
+      <span className="font-bold tracking-wider uppercase text-ink">
+        {shortBrand}
       </span>
       <span aria-hidden="true" className="opacity-45">·</span>
-      <span>{schoolSettings.area}</span>
+      <span className="text-ink-muted">{schoolSettings.area}, {schoolSettings.upazila}</span>
+      <span aria-hidden="true" className="opacity-45 hidden sm:inline">·</span>
+      <span className="hidden sm:inline text-ink-muted">{schoolSettings.district}</span>
       <span aria-hidden="true" className="opacity-45">·</span>
-      <span>{schoolSettings.upazila}</span>
-      <span aria-hidden="true" className="opacity-45">·</span>
-      <span>{schoolSettings.district}</span>
-      <span aria-hidden="true" className="opacity-45">·</span>
-      <span className="px-2 py-0.5 rounded-full bg-success-soft text-on-success-soft font-bold text-xs">
-        {t('ভর্তি চলছে', 'Admissions Open')}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--radius-btn)] bg-success-soft text-on-success-soft font-bold text-xs border border-success/25">
+        <span>{t('ভর্তি চলছে', 'Admissions Open')}</span>
       </span>
     </div>
   );
 
   const headline = (
-    <h1 className="font-heading font-extrabold text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-[1.3] text-balance text-ink">
-      {lang === 'bn' ? (
+    <h1 className="font-heading font-extrabold text-3xl sm:text-5xl lg:text-[3.35rem] tracking-tight leading-[1.24] text-balance text-ink">
+      {customHeadline ? (
+        customHeadline
+      ) : lang === 'bn' ? (
         isHighSchool ? (
           <>
             জ্ঞানের আলো ও আধুনিক বিজ্ঞান চর্চায়{' '}
@@ -96,7 +100,9 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
 
   const subheading = (
     <p className="mt-4 text-base sm:text-lg leading-[1.7] text-ink-muted font-normal">
-      {lang === 'bn'
+      {customSubtitle
+        ? customSubtitle
+        : lang === 'bn'
         ? isHighSchool
           ? `${schoolSettings.upazila} এ ${firstClass} থেকে ${lastClass} পর্যন্ত সুশৃঙ্খল, বিজ্ঞানভিত্তিক ও পূর্ণাঙ্গ একাডেমিক পাঠশালা। বিষয়ভিত্তিক অভিজ্ঞ শিক্ষক, সুসজ্জিত বিজ্ঞান ল্যাব ও শতভাগ এসএসসি পাসের সাফল্য নিয়ে আমরা শিক্ষার্থীদের প্রস্তুত করি আগামী পৃথিবীর জন্য।`
           : `${schoolSettings.upazila} এ ${firstClass} থেকে ${lastClass} পর্যন্ত ভীতিমুক্ত, আনন্দময় ও নৈতিক শিক্ষার পাঠশালা। বইয়ের ভারে ক্লান্ত না করে, ভালোবাসায় প্রদীপ জ্বালিয়ে আমরা শিশুদের প্রস্তুত করি আগামী পৃথিবীর জন্য।`
@@ -107,11 +113,11 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
   );
 
   const actionButtons = (centered = false) => (
-    <div className={`mt-8 flex flex-wrap items-center gap-3 sm:gap-4 ${centered ? 'justify-center' : ''}`}>
+    <div className={`mt-8 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 ${centered ? 'sm:justify-center' : ''}`}>
       <button
         type="button"
         onClick={onOpenAdmission}
-        className="px-6 py-3.5 text-base font-bold bg-primary-600 hover:bg-primary-700 text-on-primary rounded-[var(--radius-btn)] shadow-md active:scale-98 transition-all duration-200 flex items-center gap-2 group whitespace-nowrap"
+        className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 text-base font-bold bg-primary-600 hover:bg-primary-700 text-on-primary rounded-[var(--radius-btn)] shadow-md hover:shadow-lg active:scale-98 transition-all duration-200 flex items-center justify-center gap-2 group whitespace-nowrap"
       >
         <span>{t('ভর্তি আবেদন করুন', 'Apply for Admission')}</span>
         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -121,7 +127,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
         <button
           type="button"
           onClick={onBookVisit}
-          className="px-5 py-3.5 text-sm sm:text-base font-semibold rounded-[var(--radius-btn)] border border-line/40 bg-surface-2 hover:bg-surface-card text-ink transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
+          className="w-full sm:w-auto min-h-[46px] px-5 py-3 text-sm sm:text-base font-semibold rounded-[var(--radius-btn)] border border-line/40 bg-surface-2 hover:bg-surface-card text-ink transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <CalendarCheck className="w-4 h-4 text-accent" />
           <span>{t('ক্যাম্পাস ভিজিট বুকিং', 'Book a Visit')}</span>
@@ -131,7 +137,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
       <button
         type="button"
         onClick={onExploreJourney}
-        className="px-5 py-3.5 text-sm sm:text-base font-semibold rounded-[var(--radius-btn)] border border-line/35 bg-surface hover:bg-surface-2 text-ink transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
+        className="w-full sm:w-auto min-h-[46px] px-5 py-3 text-sm sm:text-base font-semibold rounded-[var(--radius-btn)] border border-line/35 bg-surface hover:bg-surface-2 text-ink transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
       >
         {isHighSchool ? (
           <BookOpen className="w-4 h-4 text-primary-600" />
@@ -178,7 +184,9 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
         <img
           src="/images/hero_school_sunrise.webp"
           alt={lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn}
-          className={`w-full ${tall ? 'h-80 sm:h-96' : 'h-64 sm:h-80 lg:h-[420px]'} object-cover object-center group-hover:scale-102 transition-transform duration-500`}
+          width={1200}
+          height={800}
+          className={`w-full ${tall ? 'h-72 sm:h-96' : 'h-64 sm:h-80 lg:h-[420px]'} object-cover object-center group-hover:scale-[1.02] transition-transform duration-500 ease-out`}
           loading="eager"
           decoding="async"
           fetchPriority="high"
@@ -189,18 +197,18 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
             type="button"
             onClick={() => setVideoOpen(true)}
             aria-label={t('ক্যাম্পাস পরিচিতি ভিডিও দেখুন', 'Watch campus introduction video')}
-            className="absolute top-3 right-3 px-3.5 py-2 rounded-full bg-surface-card/95 hover:bg-primary-600 text-ink hover:text-on-primary border border-line/35 shadow-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+            className="absolute top-3 right-3 min-h-[40px] px-3.5 py-2 rounded-[var(--radius-btn)] bg-surface-card/95 hover:bg-primary-600 text-ink hover:text-on-primary border border-line/35 shadow-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>{t('ক্যাম্পাস ভিডিও', 'Watch Video')}</span>
           </button>
         )}
 
-        <div className="relative sm:absolute sm:bottom-3 sm:left-3 sm:right-3 p-4 sm:rounded-[var(--radius-btn)] bg-surface-card/95 backdrop-blur-xs border-t sm:border border-line/30">
-          <span className="text-xs font-bold text-primary-700 dark:text-primary-300 tracking-wider uppercase block">
+        <div className="relative sm:absolute sm:bottom-3 sm:left-3 sm:right-3 p-4 sm:rounded-[var(--radius-btn)] bg-surface-card/95 backdrop-blur-xs border-t sm:border border-line/30 shadow-sm">
+          <span className="text-[11px] font-bold text-primary-700 dark:text-primary-300 tracking-wider uppercase block">
             {t(`${schoolSettings.area} ক্যাম্পাস প্রাঙ্গণ`, `${schoolSettings.area} Campus`)}
           </span>
-          <p className="text-ink text-sm sm:text-base font-semibold mt-0.5">
+          <p className="text-ink text-sm sm:text-base font-semibold mt-0.5 leading-[1.6]">
             {lang === 'bn' ? schoolSettings.sloganBn : schoolSettings.sloganEn}
           </p>
         </div>
@@ -322,7 +330,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenAdmission, onExploreJourney, o
                 type="button"
                 onClick={() => setVideoOpen(false)}
                 aria-label={t('ভিডিও বন্ধ করুন', 'Close video')}
-                className="p-1.5 rounded-full bg-surface-2 hover:bg-primary-50 text-ink-muted hover:text-ink"
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full bg-surface-2 hover:bg-surface border border-line/30 text-ink-muted hover:text-ink transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

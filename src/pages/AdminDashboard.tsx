@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -9,9 +9,13 @@ import {
   InquiryItem,
   TestimonialItem,
 } from '../context/SchoolDataContext';
-import { presets, schoolConfig } from '../config/schoolConfig';
+import { schoolConfig } from '../config/schoolConfig';
+import { appCheckStatus, firebaseEnvironmentInfo } from '../firebase/config';
+import { useTheme } from '../context/ThemeContext';
 import { GoogleLogoIcon } from '../theme/GoogleLogoIcon';
 import { AppearanceTab } from '../components/admin/AppearanceTab';
+import { AutomationSmsTab } from '../components/admin/AutomationSmsTab';
+import { SchoolIdentityTab } from '../components/admin/SchoolIdentityTab';
 import {
   LayoutDashboard,
   Settings,
@@ -33,7 +37,6 @@ import {
   Home,
   AlertTriangle,
   Lock,
-  Layers,
   Menu,
   X,
   Upload,
@@ -43,7 +46,10 @@ import {
   Clock,
   Users,
   MessageSquareQuote,
-  Award,
+  MessageSquareMore,
+  Bell,
+  CheckCircle2,
+  Server,
 } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 
@@ -51,10 +57,30 @@ interface AdminDashboardProps {
   onGoHome: () => void;
 }
 
+/**
+ * AdminDashboard (Role-Gated Multi-School Control Center):
+ * - Owner (Principal): Full control over identity, appearance, fees, notices,
+ *   staff, gallery, applications (with CSV backup), inquiries, SMS settings, and moderators.
+ * - Moderator: Restricted strictly to operational content (notices, staff, gallery,
+ *   applications, inquiries). No access to settings, appearance, fees, SMS, logs, or system info.
+ * - Developer: Access to School Identity + Ownership Lock + Audit Logs + System Info.
+ */
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
   const { lang, t, formatNumber } = useLanguage();
-  const { user, isOwner, isAdmin, loading: authLoading, login, logout } = useAuth();
   const {
+    user,
+    isOwner,
+    isAdmin,
+    isDeveloper,
+    ownershipLocked,
+    effectiveOwnerEmail,
+    loading: authLoading,
+    login,
+    logout,
+  } = useAuth();
+  const { appearance } = useTheme();
+  const {
+    demoMode,
     schoolSettings,
     feeSettings,
     schoolType,
@@ -67,8 +93,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
     testimonials,
     activityLogs,
     moderators,
-    switchPreset,
-    updateSchoolSettings,
+    smsSettings,
+    notificationQueue,
     updateFeeSettings,
     saveNotice,
     deleteNotice,
@@ -96,6 +122,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
     | 'fees'
     | 'applications'
     | 'inquiries'
+    | 'automation'
     | 'users_logs';
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -126,47 +153,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
   );
   const [editingTestimonial, setEditingTestimonial] = useState<Partial<TestimonialItem> | null>(null);
 
-  // -------------------------------------------------------------
-  // TAB 2: SCHOOL SETTINGS FORM STATE
-  // -------------------------------------------------------------
-  const [settingsForm, setSettingsForm] = useState(schoolSettings);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 12 * 1024 * 1024) {
-      showFeedback(t('লোগোর আকার ১২ মেগাবাইটের বেশি হতে পারবে না।', 'Logo file exceeds 12MB limit.'), 'error');
+  // Strict Owner-only & Developer-only tab guard (covers ownership lock/transfer or stale tab selection)
+  useEffect(() => {
+    if (!isAdmin && isDeveloper) {
+      if (activeTab !== 'settings' && activeTab !== 'users_logs') {
+        setActiveTab('settings');
+      }
       return;
     }
-
-    setUploadingLogo(true);
-    try {
-      const compressed = await compressImage(file, { maxDimension: 480, maxBytes: 120 * 1024 });
-      setSettingsForm((prev) => ({ ...prev, logoUrl: compressed }));
-      showFeedback(t('লোগো সফলভাবে লোড হয়েছে। সংরক্ষণে ক্লিক করুন।', 'Logo loaded. Click Save Settings.'));
-    } catch (err) {
-      console.error(err);
-      showFeedback(t('লোগো অপ্টিমাইজ করা যায়নি। অন্য কোনো ছবি দিয়ে চেষ্টা করুন।', 'Failed to process logo image.'), 'error');
-    } finally {
-      setUploadingLogo(false);
+    if (!isOwner && (activeTab === 'settings' || activeTab === 'appearance' || activeTab === 'fees' || activeTab === 'automation' || activeTab === 'users_logs')) {
+      setActiveTab('overview');
     }
-  };
-
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingSettings(true);
-    try {
-      await updateSchoolSettings(settingsForm);
-      showFeedback(t('বিদ্যালয়ের তথ্য সফলভাবে সংরক্ষিত হয়েছে!', 'School settings saved successfully!'));
-    } catch (err) {
-      showFeedback(t('সংরক্ষণে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।', 'Failed to save settings.'), 'error');
-    } finally {
-      setSavingSettings(false);
-    }
-  };
+  }, [isOwner, isAdmin, isDeveloper, activeTab]);
 
   // -------------------------------------------------------------
   // TAB 3: PHOTOS & STAFF STATE
@@ -501,7 +499,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
           <button
             type="button"
             onClick={login}
-            className="w-full py-3.5 px-6 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-primary-50 text-ink border border-line/40 font-bold text-sm shadow-sm flex items-center justify-center gap-3 active:scale-98 transition-all"
+            className="w-full py-3.5 px-6 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface text-ink border border-line/40 font-bold text-sm shadow-sm flex items-center justify-center gap-3 active:scale-98 transition-all"
           >
             <GoogleLogoIcon className="w-5 h-5" />
             <span>{t('গুগল দিয়ে প্রবেশ করুন', 'Sign in with Google')}</span>
@@ -519,8 +517,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
     );
   }
 
-  // Logged in with Google, but NOT owner or moderator -> "অনুমতি নেই" (No Access)
-  if (!isAdmin) {
+  // Logged in with Google, but NOT owner, moderator, or authorized developer -> "অনুমতি নেই" (No Access)
+  if (!isAdmin && !isDeveloper) {
     return (
       <div className="min-h-screen bg-surface text-ink flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-surface-card rounded-[var(--radius-card)] p-8 border border-danger/40 shadow-2xl text-center">
@@ -555,7 +553,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
             <button
               type="button"
               onClick={onGoHome}
-              className="w-full py-2.5 px-4 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-primary-50 text-ink border border-line/30 font-bold text-xs transition-colors"
+              className="w-full py-2.5 px-4 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface text-ink border border-line/30 font-bold text-xs transition-colors"
             >
               {t('মূল ওয়েবসাইটে ফিরে যান', 'Return to School Website')}
             </button>
@@ -566,23 +564,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
   }
 
   // -------------------------------------------------------------
-  // AUTHORIZED ADMIN VIEW (Owner & Moderator)
+  // AUTHORIZED ADMIN VIEW (Owner, Moderator, or Developer Lock Access)
   // -------------------------------------------------------------
-  const navItems = [
-    { key: 'overview' as TabKey, label: t('সারসংক্ষেপ', 'Overview'), icon: <LayoutDashboard className="w-4 h-4" /> },
-    { key: 'settings' as TabKey, label: t('বিদ্যালয়ের তথ্য', 'School Settings'), icon: <Settings className="w-4 h-4" /> },
-    ...(isOwner
-      ? [{ key: 'appearance' as TabKey, label: t('দৃশ্যমানতা ও থিম', 'Appearance'), icon: <Palette className="w-4 h-4" /> }]
-      : []),
-    { key: 'photos_staff' as TabKey, label: t('ছবি ও শিক্ষকবৃন্দ', 'Photos & Staff'), icon: <Image className="w-4 h-4" /> },
-    { key: 'notices' as TabKey, label: t('নোটিশ বোর্ড', 'Notices'), icon: <BellRing className="w-4 h-4" /> },
-    { key: 'fees' as TabKey, label: t('ফি ও পেমেন্ট', 'Fees & Payment'), icon: <CreditCard className="w-4 h-4" />, ownerOnly: true },
-    { key: 'applications' as TabKey, label: t('ভর্তি আবেদনসমূহ', 'Applications'), icon: <FileText className="w-4 h-4" />, count: pendingApps.length },
-    { key: 'inquiries' as TabKey, label: t('ভিজিট বুকিং', 'Visit Inquiries'), icon: <CalendarCheck className="w-4 h-4" />, count: newInquiriesCount },
-    ...(isOwner
-      ? [{ key: 'users_logs' as TabKey, label: t('মডারেটর ও লগ', 'Users & Audit Logs'), icon: <Shield className="w-4 h-4" /> }]
-      : []),
-  ];
+  const navItems = !isAdmin && isDeveloper
+    ? [
+        { key: 'settings' as TabKey, label: t('পরিচিতি ও ডেভেলপার লক', 'Identity & Owner Lock'), icon: <Settings className="w-4 h-4" /> },
+        { key: 'users_logs' as TabKey, label: t('অডিট লগ', 'Ownership Audit Logs'), icon: <Shield className="w-4 h-4" /> },
+      ]
+    : [
+        { key: 'overview' as TabKey, label: t('সারসংক্ষেপ', 'Overview'), icon: <LayoutDashboard className="w-4 h-4" /> },
+        ...(isOwner
+          ? [
+              {
+                key: 'settings' as TabKey,
+                label: isDeveloper
+                  ? t('পরিচিতি ও ডেভেলপার লক', 'Identity & Owner Lock')
+                  : t('স্কুল পরিচিতি ও সেটিংস', 'School Identity'),
+                icon: <Settings className="w-4 h-4" />,
+              },
+              { key: 'appearance' as TabKey, label: t('দৃশ্যমানতা ও থিম', 'Appearance'), icon: <Palette className="w-4 h-4" /> },
+            ]
+          : []),
+        { key: 'photos_staff' as TabKey, label: t('ছবি ও শিক্ষকবৃন্দ', 'Photos & Staff'), icon: <Image className="w-4 h-4" /> },
+        { key: 'notices' as TabKey, label: t('নোটিশ বোর্ড', 'Notices'), icon: <BellRing className="w-4 h-4" /> },
+        ...(isOwner
+          ? [{ key: 'fees' as TabKey, label: t('ফি ও পেমেন্ট', 'Fees & Payment'), icon: <CreditCard className="w-4 h-4" /> }]
+          : []),
+        { key: 'applications' as TabKey, label: t('ভর্তি আবেদনসমূহ', 'Applications'), icon: <FileText className="w-4 h-4" />, count: pendingApps.length },
+        { key: 'inquiries' as TabKey, label: t('ভিজিট বুকিং', 'Visit Inquiries'), icon: <CalendarCheck className="w-4 h-4" />, count: newInquiriesCount },
+        ...(isOwner
+          ? [
+              {
+                key: 'automation' as TabKey,
+                label: t('SMS ও অটোমেশন', 'SMS & Automation'),
+                icon: <MessageSquareMore className="w-4 h-4" />,
+              },
+              { key: 'users_logs' as TabKey, label: t('মডারেটর ও লগ', 'Users & Audit Logs'), icon: <Shield className="w-4 h-4" /> },
+            ]
+          : []),
+      ];
 
   return (
     <div className="min-h-screen bg-surface text-ink flex flex-col">
@@ -609,7 +629,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                   {schoolSettings.nameBn}
                 </span>
                 <span className="text-[10px] text-primary-700 dark:text-primary-300 font-mono font-bold tracking-wide">
-                  {isOwner ? t('প্রধান শিক্ষক (Owner)', 'Owner Portal') : t('মডারেটর (Moderator)', 'Moderator Portal')}
+                  {isOwner
+                    ? t('প্রধান শিক্ষক (Owner)', 'Owner Portal')
+                    : isDeveloper
+                    ? t('ডেভেলপার লক পোর্টাল (Developer)', 'Developer Lock Portal')
+                    : t('মডারেটর (Moderator)', 'Moderator Portal')}
                 </span>
               </div>
             </div>
@@ -620,7 +644,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
             <button
               type="button"
               onClick={onGoHome}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 hover:bg-primary-50 border border-line/30 text-ink text-xs font-semibold rounded-[var(--radius-btn)] transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 hover:bg-surface border border-line/30 text-ink text-xs font-semibold rounded-[var(--radius-btn)] transition-colors"
             >
               <Home className="w-3.5 h-3.5 text-primary-600" />
               <span>{t('ওয়েবসাইট দেখুন', 'View Website')}</span>
@@ -685,11 +709,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
           <div className="p-4 bg-surface-2 rounded-[var(--radius-card)] border border-line/25 text-[11px] text-ink-muted leading-[1.7] space-y-2">
             <div>
               <p className="font-bold text-primary-700 dark:text-primary-300 mb-0.5">
-                {isOwner ? t('পূর্ণ নিয়ন্ত্রণ মোড', 'Full Control Mode') : t('মডারেটর মোড', 'Moderator Mode')}
+                {isOwner
+                  ? t('পূর্ণ নিয়ন্ত্রণ মোড', 'Full Control Mode')
+                  : isDeveloper
+                  ? t('ডেভেলপার লক মোড', 'Developer Lock Mode')
+                  : t('মডারেটর মোড', 'Moderator Mode')}
               </p>
               <p>
                 {isOwner
-                  ? t('আপনি থিম, ফি সেটিংস, CSV ব্যাকআপ ও মডারেটর তালিকা পরিবর্তন করতে পারেন।', 'You can manage appearance, users, fees, CSV backups and all content.')
+                  ? t('আপনি থিম, স্কুল পরিচিতি, ফি সেটিংস, CSV ব্যাকআপ ও মডারেটর তালিকা পরিবর্তন করতে পারেন।', 'You can manage school identity, appearance, users, fees, CSV backups and all content.')
+                  : isDeveloper
+                  ? t('আপনি অনুমোদিত ডেভেলপার হিসেবে মালিকানা ও ওনারশিপ লক পরিচালনা করতে পারেন।', 'As an authorized developer, you can manage ownership assignment and lock state.')
                   : t('মডারেটর হিসেবে আপনি আবেদন ও তথ্য হালনাগাদ করতে পারেন।', 'You can manage applications and content.')}
               </p>
             </div>
@@ -823,6 +853,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                 </div>
               )}
 
+              {/* Owner Notification & Security Status Strip */}
+              {isOwner && (
+                <div className="bg-surface-card rounded-[var(--radius-card)] p-4 sm:p-5 border border-line/30 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius-btn)] text-xs font-bold border ${
+                        smsSettings.enabled
+                          ? 'bg-success-soft text-on-success-soft border-success/30'
+                          : 'bg-warning-soft text-on-warning-soft border-warning/30'
+                      }`}
+                    >
+                      {smsSettings.enabled ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                      <span>
+                        {smsSettings.enabled
+                          ? t('SMS বিজ্ঞপ্তি: সক্রিয়', 'SMS Notifications: Enabled')
+                          : t('SMS বিজ্ঞপ্তি: বন্ধ (প্রস্তুত)', 'SMS Notifications: Disabled (Ready)')}
+                      </span>
+                    </span>
+
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius-btn)] bg-surface-2 border border-line/30 text-xs font-semibold text-ink tabular-nums">
+                      <MessageSquareMore className="w-3.5 h-3.5 text-primary-600" />
+                      <span>
+                        {t(
+                          `প্রস্তুত ট্রিগার: ${formatNumber(notificationQueue.length)}`,
+                          `Prepared Triggers: ${notificationQueue.length}`
+                        )}
+                      </span>
+                    </span>
+
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius-btn)] bg-surface-2 border border-line/30 text-xs font-semibold text-ink">
+                      <Shield className="w-3.5 h-3.5 text-primary-600" />
+                      <span>
+                        {appCheckStatus.configured
+                          ? t('App Check: সক্রিয়', 'App Check: Active')
+                          : t('App Check: প্রস্তুত', 'App Check: Prepared')}
+                      </span>
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('automation')}
+                    className="px-4 py-2 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface text-primary-700 dark:text-primary-300 border border-line/35 text-xs font-bold shrink-0 self-start lg:self-center transition-colors"
+                  >
+                    {t('SMS ও অটোমেশন পরিচালনা →', 'Manage SMS & Automation →')}
+                  </button>
+                </div>
+              )}
+
               {/* Recent Applications & Notices Split */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -854,7 +933,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                             setSelectedAppDetail(app);
                             setActiveTab('applications');
                           }}
-                          className="cursor-pointer p-3 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-primary-50/40 border border-line/25 transition-colors flex items-center justify-between gap-3"
+                          className="cursor-pointer p-3 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface border border-line/25 transition-colors flex items-center justify-between gap-3"
                         >
                           <div>
                             <strong className="text-xs sm:text-sm text-ink block font-bold">
@@ -934,470 +1013,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
             <AppearanceTab onNotify={showFeedback} />
           )}
 
-          {/* TAB 2: SCHOOL SETTINGS */}
-          {activeTab === 'settings' && (
-            <div className="bg-surface-card rounded-[var(--radius-card)] p-6 sm:p-8 border border-line/30 shadow-xs">
-              <div className="pb-4 border-b border-line/25 mb-6">
-                <h2 className="font-heading font-extrabold text-xl text-ink">
-                  {t('বিদ্যালয়ের সাধারণ তথ্য ও ব্র্যান্ডিং', 'School Settings & Branding')}
-                </h2>
-                <p className="text-xs text-ink-muted mt-1">
-                  {t('এখানে পরিবর্তন করলে মূল পাবলিক ওয়েবসাইটে তা তাৎক্ষণিকভাবে প্রতিফলিত হবে।', 'Changes here reflect on the public website immediately.')}
-                </p>
-              </div>
+          {/* TAB: SMS & AUTOMATION (OWNER ONLY) */}
+          {activeTab === 'automation' && isOwner && (
+            <AutomationSmsTab onNotify={showFeedback} />
+          )}
 
-              <form onSubmit={handleSaveSettings} className="space-y-6">
-
-                {/* 1. SCHOOL LEVEL PRESET SELECTOR */}
-                <div className="p-5 rounded-[var(--radius-card)] bg-surface-2 border border-line/30 shadow-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                    <div>
-                      <h3 className="font-heading font-extrabold text-base text-ink flex items-center gap-2">
-                        <Layers className="w-5 h-5 text-primary-600" />
-                        <span>{t('বিদ্যালয়ের স্তর ও প্রিসেট নির্বাচন (School Level Template)', 'School Level Preset Template')}</span>
-                      </h3>
-                      <p className="text-xs text-ink-muted">
-                        {t('প্রিসেট পরিবর্তন করলে পাঠ্যক্রমের শ্রেণি তালিকা, ভর্তি ফরম ও ফি চার্ট স্বয়ংক্রিয়ভাবে পুনর্বিন্যাস হবে। থিম আলাদা রাখতে চাইলে "দৃশ্যমানতা ও থিম" ট্যাব দেখুন।', 'Switching level reconfigures the curriculum road, admission form & fee matrix without altering visual theme.')}
-                      </p>
-                    </div>
-
-                    {isOwner && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('appearance')}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-card hover:bg-primary-50 text-primary-700 dark:text-primary-300 border border-line/30 rounded-[var(--radius-btn)] text-xs font-bold self-start sm:self-center shrink-0 transition-colors"
-                      >
-                        <Palette className="w-3.5 h-3.5" />
-                        <span>{t('থিম ও রঙ কাস্টমাইজ →', 'Customize Theme →')}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        switchPreset('kindergarten');
-                        const p = presets.kindergarten;
-                        setSettingsForm((prev) => ({
-                          ...prev,
-                          nameBn: p.identity?.name.bn || '',
-                          nameEn: p.identity?.name.en || '',
-                          sloganBn: p.identity?.slogan.bn || '',
-                          sloganEn: p.identity?.slogan.en || '',
-                          schoolCode: p.schoolCode || '',
-                          registrationNo: p.registrationNo || '',
-                          schoolType: 'kindergarten',
-                        }));
-                      }}
-                      className={`p-3.5 rounded-[var(--radius-btn)] border text-left transition-all ${
-                        schoolType === 'kindergarten'
-                          ? 'bg-primary-600 text-on-primary border-primary-700 shadow-md ring-2 ring-ring/30'
-                          : 'bg-surface-card text-ink border-line/30 hover:border-primary-400'
-                      }`}
-                    >
-                      <div className="font-bold text-sm">
-                        {t('কিন্ডারগার্টেন (Kindergarten)', 'Kindergarten Preset')}
-                      </div>
-                      <div className={`text-xs mt-1 ${schoolType === 'kindergarten' ? 'text-on-primary/85' : 'text-ink-muted'}`}>
-                        {t('প্লে, নার্সারি, কেজি ও ১ম-৫ম শ্রেণি', 'Play, Nursery, KG & Class 1-5')}
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        switchPreset('primary');
-                        const p = presets.primary;
-                        setSettingsForm((prev) => ({
-                          ...prev,
-                          nameBn: p.identity?.name.bn || '',
-                          nameEn: p.identity?.name.en || '',
-                          sloganBn: p.identity?.slogan.bn || '',
-                          sloganEn: p.identity?.slogan.en || '',
-                          eiin: p.eiin || '123456',
-                          mpoStatus: p.mpoStatus || '',
-                          schoolCode: p.schoolCode || '',
-                          registrationNo: p.registrationNo || '',
-                          schoolType: 'primary',
-                        }));
-                      }}
-                      className={`p-3.5 rounded-[var(--radius-btn)] border text-left transition-all ${
-                        schoolType === 'primary'
-                          ? 'bg-primary-600 text-on-primary border-primary-700 shadow-md ring-2 ring-ring/30'
-                          : 'bg-surface-card text-ink border-line/30 hover:border-primary-400'
-                      }`}
-                    >
-                      <div className="font-bold text-sm">
-                        {t('প্রাথমিক বিদ্যালয় (Primary School)', 'Primary School Preset')}
-                      </div>
-                      <div className={`text-xs mt-1 ${schoolType === 'primary' ? 'text-on-primary/85' : 'text-ink-muted'}`}>
-                        {t('১ম থেকে ৫ম শ্রেণি (৫টি গ্রেড)', 'Class 1 to 5 (5 Grades)')}
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        switchPreset('highschool');
-                        const p = presets.highschool;
-                        setSettingsForm((prev) => ({
-                          ...prev,
-                          nameBn: p.identity?.name.bn || '',
-                          nameEn: p.identity?.name.en || '',
-                          sloganBn: p.identity?.slogan.bn || '',
-                          sloganEn: p.identity?.slogan.en || '',
-                          eiin: p.eiin || '134567',
-                          mpoStatus: p.mpoStatus || '',
-                          schoolCode: p.schoolCode || '',
-                          registrationNo: p.registrationNo || '',
-                          schoolType: 'highschool',
-                        }));
-                      }}
-                      className={`p-3.5 rounded-[var(--radius-btn)] border text-left transition-all ${
-                        schoolType === 'highschool'
-                          ? 'bg-primary-600 text-on-primary border-primary-700 shadow-md ring-2 ring-ring/30'
-                          : 'bg-surface-card text-ink border-line/30 hover:border-primary-400'
-                      }`}
-                    >
-                      <div className="font-bold text-sm">
-                        {t('উচ্চ বিদ্যালয় (High School)', 'High School Preset')}
-                      </div>
-                      <div className={`text-xs mt-1 ${schoolType === 'highschool' ? 'text-on-primary/85' : 'text-ink-muted'}`}>
-                        {t('৬ষ্ঠ-১০ম শ্রেণি, বিজ্ঞান/বাণিজ্য/মানবিক ও এসএসসি', 'Class 6-10, Groups & SSC Road')}
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* School Logo Upload & Preview */}
-                <div className="p-4 rounded-[var(--radius-card)] bg-surface-2 border border-line/25">
-                  <label className="block text-xs font-bold text-ink mb-2">
-                    {t('বিদ্যালয়ের অফিসিয়াল লোগো (স্বয়ংক্রিয় অপ্টিমাইজড)', 'School Official Logo (Auto Optimized)')}
-                  </label>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="w-16 h-16 rounded-[var(--radius-card)] bg-surface-card border border-line/30 flex items-center justify-center overflow-hidden shrink-0 shadow-xs relative">
-                      {settingsForm.logoUrl ? (
-                        <img src={settingsForm.logoUrl} alt="Logo Preview" className="w-full h-full object-contain p-1" />
-                      ) : uploadingLogo ? (
-                        <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
-                      ) : (
-                        <Image className="w-8 h-8 text-primary-600" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-[200px]">
-                      <div className="flex items-center gap-2">
-                        <label className={`cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 bg-primary-600 hover:bg-primary-700 text-on-primary text-xs font-bold rounded-[var(--radius-btn)] transition-colors ${uploadingLogo ? 'opacity-60 pointer-events-none' : ''}`}>
-                          {uploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                          <span>{uploadingLogo ? t('লোগো অপ্টিমাইজ হচ্ছে...', 'Optimizing...') : t('ডিভাইস থেকে আপলোড', 'Upload Logo File')}</span>
-                          <input type="file" accept="image/*" onChange={handleLogoUpload} disabled={uploadingLogo} className="hidden" />
-                        </label>
-                        {settingsForm.logoUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setSettingsForm({ ...settingsForm, logoUrl: '' })}
-                            className="px-3 py-2 text-danger hover:bg-danger-soft text-xs font-semibold rounded-[var(--radius-btn)]"
-                          >
-                            {t('লোগো সরান', 'Remove')}
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-ink-muted mt-1">
-                        {t('১২ মেগাবাইট পর্যন্ত যেকোনো ইমেজ ফাইল। ক্যানভাসে স্বয়ংক্রিয়ভাবে রিসাইজ হবে (সর্বোচ্চ ৪৮০ পিক্সেল)।', 'Accepts files up to 12MB. Resized automatically via canvas to max 480px.')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('বিদ্যালয়ের নাম (বাংলায়) *', 'School Name (Bengali) *')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.nameBn}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, nameBn: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('বিদ্যালয়ের নাম (ইংরেজিতে) *', 'School Name (English) *')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.nameEn}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, nameEn: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('স্লোগান (বাংলায়)', 'Tagline (Bengali)')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.sloganBn}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, sloganBn: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('স্লোগান (ইংরেজিতে)', 'Tagline (English)')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.sloganEn}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, sloganEn: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Hero Headline Texts */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-line/20">
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('হোমপেজ হিরো শিরোনাম (বাংলা)', 'Hero Headline (Bengali)')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.heroTitleBn}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, heroTitleBn: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('হোমপেজ হিরো শিরোনাম (ইংরেজি)', 'Hero Headline (English)')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.heroTitleEn}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, heroTitleEn: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Location & Contacts */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-line/20">
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('প্রধান সড়ক / ঠিকানা', 'Address')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.addressLine}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, addressLine: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('হটলাইন ফোন ১', 'Primary Hotline')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.phonePrimary}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, phonePrimary: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-ink mb-1">
-                      {t('হোয়াটসঅ্যাপ নম্বর', 'WhatsApp Number')}
-                    </label>
-                    <input
-                      type="text"
-                      value={settingsForm.whatsappNumber}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsappNumber: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-sm focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Institutional Credentials & Board Identity */}
-                <div className="p-4 bg-surface-2 rounded-[var(--radius-card)] border border-line/25 space-y-3">
-                  <h4 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-success" />
-                    <span>{t('প্রাতিষ্ঠানিক পরিচিতি ও সরকারি স্বীকৃতি (EIIN, MPO & Code)', 'Institutional Identity (EIIN, MPO & Code)')}</span>
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('ইআইআইএন (EIIN)', 'EIIN Number')}
-                      </label>
-                      <input
-                        type="text"
-                        value={settingsForm.eiin || ''}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, eiin: e.target.value })}
-                        placeholder="e.g. 134567"
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs font-mono font-bold bg-surface text-ink"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('এমপিও স্ট্যাটাস (MPO Status)', 'MPO Status')}
-                      </label>
-                      <input
-                        type="text"
-                        value={settingsForm.mpoStatus || ''}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, mpoStatus: e.target.value })}
-                        placeholder={t('এমপিওভুক্ত / নন-এমপিও', 'MPO Enlisted / Non-MPO')}
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs bg-surface text-ink"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('বিদ্যালয় কোড (School Code)', 'School Code')}
-                      </label>
-                      <input
-                        type="text"
-                        value={settingsForm.schoolCode || ''}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, schoolCode: e.target.value })}
-                        placeholder={`e.g. ${schoolConfig.applicationPrefix}-4509`}
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs font-mono font-bold bg-surface text-ink"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('নিবন্ধন নং (Reg No)', 'Registration No')}
-                      </label>
-                      <input
-                        type="text"
-                        value={settingsForm.registrationNo || ''}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, registrationNo: e.target.value })}
-                        placeholder="কুড়ি/রাজা/কেজি/২০১৬-৭৮"
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs bg-surface text-ink"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Homepage Achievement Counters */}
-                <div className="p-4 bg-surface-2 rounded-[var(--radius-card)] border border-line/25 space-y-3">
-                  <h4 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-                    <Award className="w-4 h-4 text-primary-600" />
-                    <span>{t('হোমপেজ অর্জন ও পরিসংখ্যান (Achievement Counters)', 'Homepage Achievement Counters')}</span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('মোট শিক্ষার্থী', 'Total Students')}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={settingsForm.stats?.studentsCount ?? ''}
-                        onChange={(e) =>
-                          setSettingsForm({
-                            ...settingsForm,
-                            stats: {
-                              ...settingsForm.stats,
-                              studentsCount: Number(e.target.value) || 0,
-                            },
-                          })
-                        }
-                        placeholder="350"
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs font-mono font-bold bg-surface text-ink"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('অভিজ্ঞ শিক্ষক', 'Total Teachers')}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={settingsForm.stats?.teachersCount ?? ''}
-                        onChange={(e) =>
-                          setSettingsForm({
-                            ...settingsForm,
-                            stats: {
-                              ...settingsForm.stats,
-                              teachersCount: Number(e.target.value) || 0,
-                            },
-                          })
-                        }
-                        placeholder="18"
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs font-mono font-bold bg-surface text-ink"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('অভিজ্ঞতার বছর', 'Years of Service')}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={settingsForm.stats?.yearsCount ?? ''}
-                        onChange={(e) =>
-                          setSettingsForm({
-                            ...settingsForm,
-                            stats: {
-                              ...settingsForm.stats,
-                              yearsCount: Number(e.target.value) || 0,
-                            },
-                          })
-                        }
-                        placeholder="12"
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs font-mono font-bold bg-surface text-ink"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink mb-1">
-                        {t('পাসের হার / সাফল্য', 'Success Rate')}
-                      </label>
-                      <input
-                        type="text"
-                        value={settingsForm.stats?.successRate ?? ''}
-                        onChange={(e) =>
-                          setSettingsForm({
-                            ...settingsForm,
-                            stats: {
-                              ...settingsForm.stats,
-                              successRate: e.target.value,
-                            },
-                          })
-                        }
-                        placeholder="100%"
-                        className="w-full px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs font-mono font-bold bg-surface text-ink"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={savingSettings}
-                    className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-on-primary font-bold text-sm rounded-[var(--radius-btn)] shadow-md transition-colors"
-                  >
-                    {savingSettings ? t('সংরক্ষণ হচ্ছে...', 'Saving...') : t('পরিবর্তন সংরক্ষণ করুন', 'Save Settings')}
-                  </button>
-                </div>
-              </form>
-            </div>
+          {/* TAB 2: SCHOOL IDENTITY & DEVELOPER OWNERSHIP LOCK */}
+          {activeTab === 'settings' && (isOwner || isDeveloper) && (
+            <SchoolIdentityTab
+              onNotify={showFeedback}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+            />
           )}
 
           {/* TAB 3: PHOTOS & STAFF */}
@@ -1538,49 +1164,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                 )}
 
                 {/* Staff Cards List */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {staffList.map((st) => (
-                    <div key={st.id} className="p-4 rounded-[var(--radius-card)] bg-surface-2 border border-line/25 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-primary-700 dark:text-primary-300">{st.roleBn}</span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => setEditingStaff(st)}
-                              className="p-1 text-ink-muted hover:text-primary-600"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteStaff(st.id)}
-                              className="p-1 text-ink-muted hover:text-danger"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 mb-2">
-                          {st.photoUrl ? (
-                            <img src={st.photoUrl} alt={st.nameBn} className="w-10 h-10 rounded-[var(--radius-btn)] object-cover border border-line/30 shrink-0" />
-                          ) : (
-                            <div className="w-10 h-10 rounded-[var(--radius-btn)] bg-primary-100 text-primary-900 flex items-center justify-center font-bold text-sm shrink-0">
-                              {st.nameBn.charAt(0)}
+                {staffList.length === 0 ? (
+                  <div className="p-8 text-center rounded-[var(--radius-card)] bg-surface-2 border border-line/25 text-xs text-ink-muted">
+                    {t(
+                      'এখনও কোনো শিক্ষক যুক্ত করা হয়নি। উপরে "নতুন শিক্ষক যুক্ত করুন" বাটনে ক্লিক করে শুরু করুন।',
+                      'No faculty members added yet. Click "Add Teacher" above to create the first profile.'
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {staffList.map((st) => (
+                      <div key={st.id} className="p-4 rounded-[var(--radius-card)] bg-surface-2 border border-line/25 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-primary-700 dark:text-primary-300">{st.roleBn}</span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingStaff(st)}
+                                className="p-1.5 text-ink-muted hover:text-primary-600"
+                                title={t('সম্পাদনা করুন', 'Edit')}
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteStaff(st.id)}
+                                className="p-1.5 text-ink-muted hover:text-danger"
+                                title={t('মুছুন', 'Delete')}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          )}
-                          <div>
-                            <strong className="text-sm font-bold text-ink block">{st.nameBn}</strong>
-                            <p className="text-[11px] text-ink-muted">{st.qualification}</p>
                           </div>
-                        </div>
 
-                        {st.bio && <p className="text-xs text-ink-muted italic line-clamp-2">"{st.bio}"</p>}
+                          <div className="flex items-center gap-3 mb-2">
+                            {st.photoUrl ? (
+                              <img src={st.photoUrl} alt={st.nameBn} className="w-10 h-10 rounded-[var(--radius-btn)] object-cover border border-line/30 shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-[var(--radius-btn)] bg-surface-card border border-line/30 text-primary-700 dark:text-primary-300 flex items-center justify-center font-bold text-sm shrink-0">
+                                {st.nameBn.charAt(0)}
+                              </div>
+                            )}
+                            <div>
+                              <strong className="text-sm font-bold text-ink block">{st.nameBn}</strong>
+                              <p className="text-[11px] text-ink-muted">{st.qualification}</p>
+                            </div>
+                          </div>
+
+                          {st.bio && <p className="text-xs text-ink-muted italic line-clamp-2">"{st.bio}"</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Gallery Photos Section */}
@@ -1622,7 +1259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                       onChange={(e) => setNewPhotoUrl(e.target.value)}
                       className="px-3 py-2 rounded-[var(--radius-input)] border border-line/40 text-xs bg-surface text-ink"
                     />
-                    <label className={`cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-surface-card hover:bg-primary-50 text-ink text-xs font-bold rounded-[var(--radius-btn)] border border-line/40 transition-colors shadow-xs ${uploadingGalleryPhoto ? 'opacity-60 pointer-events-none' : ''}`}>
+                    <label className={`cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-surface-card hover:bg-surface-2 text-ink text-xs font-bold rounded-[var(--radius-btn)] border border-line/40 transition-colors shadow-xs ${uploadingGalleryPhoto ? 'opacity-60 pointer-events-none' : ''}`}>
                       {uploadingGalleryPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary-600" /> : <Upload className="w-3.5 h-3.5 text-primary-600" />}
                       <span>{uploadingGalleryPhoto ? t('অপ্টিমাইজ হচ্ছে...', 'Optimizing...') : t('ফাইল আপলোড করুন', 'Upload File')}</span>
                       <input type="file" accept="image/*" onChange={handleGalleryPhotoUpload} disabled={uploadingGalleryPhoto} className="hidden" />
@@ -1639,27 +1276,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                 </form>
 
                 {/* Photos Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {galleryPhotos.map((photo) => (
-                    <div key={photo.id} className="relative group rounded-[var(--radius-card)] overflow-hidden border border-line/25 bg-surface-2">
-                      <div className="aspect-[4/3]">
-                        <img src={photo.photoUrl} alt={photo.title} className="w-full h-full object-cover" />
+                {galleryPhotos.length === 0 ? (
+                  <div className="p-8 text-center rounded-[var(--radius-card)] bg-surface-2 border border-line/25 text-xs text-ink-muted">
+                    {t(
+                      'গ্যালারিতে কোনো ছবি যুক্ত করা হয়নি। উপরের ফরম থেকে প্রথম ক্যাম্পাসের ছবি আপলোড করুন।',
+                      'No gallery photos uploaded yet. Use the form above to upload your first campus photo.'
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {galleryPhotos.map((photo) => (
+                      <div key={photo.id} className="relative group rounded-[var(--radius-card)] overflow-hidden border border-line/25 bg-surface-2">
+                        <div className="aspect-[4/3]">
+                          <img src={photo.photoUrl} alt={photo.title} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="p-2.5 bg-surface-card text-xs">
+                          <span className="text-[10px] font-bold text-primary-700 dark:text-primary-300 uppercase block">{photo.category}</span>
+                          <strong className="text-ink truncate block">{photo.title}</strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteGalleryPhoto(photo.id)}
+                          className="absolute top-2 right-2 p-1.5 rounded-full bg-danger text-on-danger opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          title={t('ছবি মুছুন', 'Delete photo')}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <div className="p-2.5 bg-surface-card text-xs">
-                        <span className="text-[10px] font-bold text-primary-700 dark:text-primary-300 uppercase block">{photo.category}</span>
-                        <strong className="text-ink truncate block">{photo.title}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => deleteGalleryPhoto(photo.id)}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-danger text-on-danger opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete photo"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Parent Testimonials Section */}
@@ -1941,72 +1587,81 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
               )}
 
               {/* Notices List */}
-              <div className="space-y-4">
-                {notices.map((n) => (
-                  <div key={n.id} className="p-5 rounded-[var(--radius-card)] bg-surface-2 border border-line/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-sm sm:text-base font-bold text-ink">{n.title}</strong>
-                        {n.isAdmissionNotice && (
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              n.admissionActive ? 'bg-success-soft text-on-success-soft' : 'bg-surface border border-line/30 text-ink-muted'
-                            }`}
-                          >
-                            {n.admissionActive ? t('ভর্তি ব্যানার চালু', 'Banner Active') : t('ব্যানার বন্ধ', 'Banner Inactive')}
+              {notices.length === 0 ? (
+                <div className="p-8 text-center rounded-[var(--radius-card)] bg-surface-2 border border-line/25 text-xs text-ink-muted">
+                  {t(
+                    'এখনও কোনো নোটিশ প্রকাশ করা হয়নি। উপরে "নতুন নোটিশ তৈরি" বাটনে ক্লিক করে প্রথম নোটিশ বা ভর্তি বিজ্ঞপ্তি যোগ করুন।',
+                    'No notices published yet. Click "New Notice" above to post an announcement or admission banner.'
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {notices.map((n) => (
+                    <div key={n.id} className="p-5 rounded-[var(--radius-card)] bg-surface-2 border border-line/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm sm:text-base font-bold text-ink">{n.title}</strong>
+                          {n.isAdmissionNotice && (
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                n.admissionActive ? 'bg-success-soft text-on-success-soft' : 'bg-surface border border-line/30 text-ink-muted'
+                              }`}
+                            >
+                              {n.admissionActive ? t('ভর্তি ব্যানার চালু', 'Banner Active') : t('ব্যানার বন্ধ', 'Banner Inactive')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm text-ink-muted">{n.content}</p>
+                        {n.endDate && (
+                          <span className="text-[11px] text-ink-muted block font-mono">
+                            {t('মেয়াদ:', 'Deadline:')} {n.endDate}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs sm:text-sm text-ink-muted">{n.content}</p>
-                      {n.endDate && (
-                        <span className="text-[11px] text-ink-muted block font-mono">
-                          {t('মেয়াদ:', 'Deadline:')} {n.endDate}
-                        </span>
-                      )}
-                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                      {n.isAdmissionNotice && (
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        {n.isAdmissionNotice && (
+                          <button
+                            type="button"
+                            onClick={() => toggleAdmissionBanner(n)}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-[var(--radius-btn)] border transition-colors ${
+                              n.admissionActive
+                                ? 'bg-warning-soft text-on-warning-soft border-warning/30'
+                                : 'bg-surface-card text-ink border-line/35 hover:bg-surface'
+                            }`}
+                          >
+                            {n.admissionActive ? t('ব্যানার বন্ধ করুন', 'Turn Off Banner') : t('ব্যানার চালু করুন', 'Turn On Banner')}
+                          </button>
+                        )}
+
                         <button
                           type="button"
-                          onClick={() => toggleAdmissionBanner(n)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-[var(--radius-btn)] border transition-colors ${
-                            n.admissionActive
-                              ? 'bg-warning-soft text-on-warning-soft border-warning/30'
-                              : 'bg-surface-card text-ink border-line/35 hover:bg-primary-50'
-                          }`}
+                          onClick={() => setEditingNotice(n)}
+                          className="p-2 text-ink-muted hover:text-primary-600"
+                          title={t('সম্পাদনা করুন', 'Edit notice')}
                         >
-                          {n.admissionActive ? t('ব্যানার বন্ধ করুন', 'Turn Off Banner') : t('ব্যানার চালু করুন', 'Turn On Banner')}
+                          <Edit className="w-4 h-4" />
                         </button>
-                      )}
 
-                      <button
-                        type="button"
-                        onClick={() => setEditingNotice(n)}
-                        className="p-2 text-ink-muted hover:text-primary-600"
-                        title="Edit notice"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => deleteNotice(n.id)}
-                        className="p-2 text-ink-muted hover:text-danger"
-                        title="Delete notice"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteNotice(n.id)}
+                          className="p-2 text-ink-muted hover:text-danger"
+                          title={t('মুছুন', 'Delete notice')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
             </div>
           )}
 
           {/* TAB 5: FEES & PAYMENT (OWNER ONLY) */}
-          {activeTab === 'fees' && (
+          {activeTab === 'fees' && isOwner && (
             <div className="bg-surface-card rounded-[var(--radius-card)] p-6 sm:p-8 border border-line/30 shadow-xs">
               <div className="pb-4 border-b border-line/25 mb-6 flex items-center justify-between">
                 <div>
@@ -2045,7 +1700,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                         disabled={!isOwner}
                         value={feesForm.bkashNumber}
                         onChange={(e) => setFeesForm({ ...feesForm, bkashNumber: e.target.value })}
-                        placeholder="01712-345678 (Personal)"
+                        placeholder="01XXXXXXXXX (Personal)"
                         className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 text-sm font-mono bg-surface text-ink disabled:bg-surface-2"
                         required
                       />
@@ -2060,7 +1715,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                         disabled={!isOwner}
                         value={feesForm.nagadNumber}
                         onChange={(e) => setFeesForm({ ...feesForm, nagadNumber: e.target.value })}
-                        placeholder="01823-987654 (Merchant)"
+                        placeholder="01XXXXXXXXX (Merchant)"
                         className="w-full px-3.5 py-2.5 rounded-[var(--radius-input)] border border-line/40 text-sm font-mono bg-surface text-ink disabled:bg-surface-2"
                         required
                       />
@@ -2320,7 +1975,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                                 setSelectedAppDetail(app);
                                 setInternalNoteDraft(app.internalNotes || '');
                               }}
-                              className="px-3 py-1 bg-surface-2 hover:bg-primary-50 text-ink border border-line/25 font-bold rounded-[var(--radius-btn)] text-xs transition-colors"
+                              className="px-3 py-1 bg-surface-2 hover:bg-surface text-ink border border-line/25 font-bold rounded-[var(--radius-btn)] text-xs transition-colors"
                             >
                               {t('বিস্তারিত', 'View')}
                             </button>
@@ -2349,7 +2004,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                       <button
                         type="button"
                         onClick={() => setSelectedAppDetail(null)}
-                        className="p-1.5 rounded-full bg-surface-2 hover:bg-primary-50 text-ink-muted"
+                        className="p-2 rounded-full bg-surface-2 hover:bg-surface text-ink-muted min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -2400,7 +2055,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                             className={`py-2 px-2 text-xs font-bold rounded-[var(--radius-btn)] border transition-all ${
                               selectedAppDetail.status === st
                                 ? 'bg-primary-600 text-on-primary border-primary-700 shadow-xs'
-                                : 'bg-surface-2 text-ink border-line/30 hover:bg-primary-50'
+                                : 'bg-surface-2 text-ink border-line/30 hover:bg-surface'
                             }`}
                           >
                             {st.toUpperCase()}
@@ -2451,7 +2106,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                       <button
                         type="button"
                         onClick={() => setSelectedAppDetail(null)}
-                        className="px-4 py-2 bg-surface-2 hover:bg-primary-50 text-ink border border-line/30 text-xs font-bold rounded-[var(--radius-btn)]"
+                        className="px-4 py-2 bg-surface-2 hover:bg-surface text-ink border border-line/30 text-xs font-bold rounded-[var(--radius-btn)] transition-colors"
                       >
                         {t('বন্ধ করুন', 'Close')}
                       </button>
@@ -2498,7 +2153,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                       className={`px-3 py-1.5 rounded-[var(--radius-btn)] text-xs font-bold border transition-colors ${
                         inquiryFilter === f.key
                           ? 'bg-primary-600 text-on-primary border-primary-600'
-                          : 'bg-surface-2 text-ink border-line/30 hover:bg-primary-50'
+                          : 'bg-surface-2 text-ink border-line/30 hover:bg-surface'
                       }`}
                     >
                       {f.label}
@@ -2532,7 +2187,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                               <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <a
                                   href={`tel:${inq.phone}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-btn)] bg-primary-50 dark:bg-surface text-primary-700 dark:text-primary-300 border border-primary-200/60 font-mono text-xs font-bold hover:underline"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-btn)] bg-surface-card text-primary-700 dark:text-primary-300 border border-line/35 font-mono text-xs font-bold hover:underline"
                                 >
                                   <PhoneCall className="w-3.5 h-3.5" />
                                   <span>{inq.phone}</span>
@@ -2592,7 +2247,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                                 className={`px-2.5 py-1 rounded-[var(--radius-btn)] text-[11px] font-bold border transition-colors ${
                                   inq.status === st
                                     ? 'bg-primary-600 text-on-primary border-primary-600'
-                                    : 'bg-surface text-ink border-line/30 hover:bg-primary-50'
+                                    : 'bg-surface text-ink border-line/30 hover:bg-surface-card'
                                 }`}
                               >
                                 {st === 'new'
@@ -2630,12 +2285,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
             </div>
           )}
 
-          {/* TAB 7: USERS & AUDIT LOGS (OWNER ONLY) */}
-          {activeTab === 'users_logs' && isOwner && (
+          {/* TAB 7: USERS & AUDIT LOGS (OWNER OR DEVELOPER AUDIT) */}
+          {activeTab === 'users_logs' && (isOwner || isDeveloper) && (
             <div className="space-y-8">
 
-              {/* Moderators Management Box */}
-              <div className="bg-surface-card rounded-[var(--radius-card)] p-6 sm:p-8 border border-line/30 shadow-xs">
+              {/* Moderators Management Box (Owner Only) */}
+              {isOwner && (
+                <div className="bg-surface-card rounded-[var(--radius-card)] p-6 sm:p-8 border border-line/30 shadow-xs">
                 <div className="pb-4 border-b border-line/25 mb-6">
                   <h2 className="font-heading font-extrabold text-xl text-ink">
                     {t('মডারেটর নিয়োগ ও ব্যবস্থাপনা', 'Moderator Roles & Team Access')}
@@ -2689,7 +2345,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                     </div>
                   ))}
                 </div>
-              </div>
+                </div>
+              )}
 
               {/* Activity Logs Audit Box */}
               <div className="bg-surface-card rounded-[var(--radius-card)] p-6 sm:p-8 border border-line/30 shadow-xs">
@@ -2727,6 +2384,115 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onGoHome }) => {
                   </div>
                 )}
               </div>
+
+              {/* System Info & Multi-School Deployment Diagnostics (Strictly Owner / Developer Only) */}
+              {(isOwner || isDeveloper) && (
+                <div className="bg-surface-card rounded-[var(--radius-card)] p-6 sm:p-8 border border-line/30 shadow-xs space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line/25">
+                    <div>
+                      <h3 className="font-heading font-extrabold text-xl text-ink flex items-center gap-2">
+                        <Server className="w-5 h-5 text-primary-600" />
+                        <span>{t('সিস্টেম তথ্য ও সংস্করণ (System Info)', 'System Info & Deployment Status')}</span>
+                      </h3>
+                      <p className="text-xs text-ink-muted mt-0.5">
+                        {t(
+                          'শুধুমাত্র Owner ও Developer-এর জন্য দৃশ্যমান — টেমপ্লেট ভার্সন, Firebase সংযোগ ও ওনারশিপ লক অবস্থা।',
+                          'Visible strictly to Owner & Developer — active template version, Firebase environment source, and ownership lock state.'
+                        )}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius-btn)] bg-surface-2 border border-line/35 text-primary-700 dark:text-primary-300 font-mono text-xs font-bold self-start sm:self-center">
+                      v{schoolConfig.meta.templateVersion}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
+                    <div className="p-3.5 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 space-y-1">
+                      <span className="text-[11px] font-bold text-ink-muted uppercase block">
+                        {t('টেমপ্লেট ও সংস্করণ', 'Template & Version')}
+                      </span>
+                      <strong className="text-ink font-bold block">
+                        {schoolConfig.meta.reusableTemplateName}
+                      </strong>
+                      <span className="font-mono text-[11px] text-primary-700 dark:text-primary-300 block">
+                        Release v{schoolConfig.meta.templateVersion} · {firebaseEnvironmentInfo.appEnv}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 space-y-1">
+                      <span className="text-[11px] font-bold text-ink-muted uppercase block">
+                        {t('Firebase প্রজেক্ট ও উৎস', 'Firebase Project & Source')}
+                      </span>
+                      <strong className="text-ink font-mono block break-all">
+                        {firebaseEnvironmentInfo.projectId}
+                      </strong>
+                      <span className="text-[11px] text-ink-muted font-mono block">
+                        {firebaseEnvironmentInfo.configSource === 'vercel-env'
+                          ? 'Source: Vercel / Vite Env Vars'
+                          : 'Source: firebase-applet-config.json'}{' '}
+                        · DB: {firebaseEnvironmentInfo.databaseId}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 space-y-1">
+                      <span className="text-[11px] font-bold text-ink-muted uppercase block">
+                        {t('ওনারশিপ লক স্ট্যাটাস', 'Ownership Lock State')}
+                      </span>
+                      <strong
+                        className={`inline-flex items-center gap-1 text-xs font-mono font-bold ${
+                          ownershipLocked ? 'text-success' : 'text-warning'
+                        }`}
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>{ownershipLocked ? 'LOCKED (Principal Active)' : 'UNLOCKED (Setup Mode)'}</span>
+                      </strong>
+                      <span className="text-[11px] text-ink-muted font-mono block truncate" title={effectiveOwnerEmail}>
+                        Owner: {effectiveOwnerEmail}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 space-y-1">
+                      <span className="text-[11px] font-bold text-ink-muted uppercase block">
+                        {t('বিদ্যালয়ের ধরন ও সক্রিয় থিম', 'School Level & Theme')}
+                      </span>
+                      <strong className="text-ink font-mono uppercase block">
+                        {schoolType} · {appearance.theme} ({appearance.defaultMode})
+                      </strong>
+                      <span className="text-[11px] text-ink-muted block">
+                        Font: {appearance.fontPair} · Radius: {appearance.radius}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 space-y-1">
+                      <span className="text-[11px] font-bold text-ink-muted uppercase block">
+                        {t('Firebase App Check', 'Firebase App Check')}
+                      </span>
+                      <strong className="text-ink block">
+                        {appCheckStatus.configured
+                          ? t('সক্রিয় (reCAPTCHA v3)', 'Active (reCAPTCHA v3)')
+                          : t('প্রস্তুত (Site Key সেট করা নেই)', 'Prepared (Site Key Not Set)')}
+                      </strong>
+                      <span className="text-[11px] text-ink-muted font-mono block">
+                        Provider: {appCheckStatus.provider}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 space-y-1">
+                      <span className="text-[11px] font-bold text-ink-muted uppercase block">
+                        {t('ডেটাবেস মোড (Demo Check)', 'Persistence & Demo State')}
+                      </span>
+                      <strong className={`block font-bold ${demoMode ? 'text-danger' : 'text-success'}`}>
+                        {demoMode
+                          ? t('সতর্কতা: ডেমো স্যান্ডবক্স চালু', 'Warning: Demo Sandbox Active')
+                          : t('লাইভ Firestore সংযোগ সক্রিয়', 'Off (Live Firestore Connected)')}
+                      </strong>
+                      <span className="text-[11px] text-ink-muted block">
+                        Storage Plan: Spark Free (No Storage Bucket)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}

@@ -34,8 +34,8 @@ export const schoolConfig = {
     geoCoordinates: { lat: 25.8016, lng: 89.5539 },
   },
   contact: {
-    phonePrimary: "+880 1712-XXXXXX",
-    whatsappNumber: "+8801712XXXXXX",
+    phonePrimary: "+880 1XXX-XXXXXX",
+    whatsappNumber: "+8801XXXXXXXXX",
     email: "contact@school.edu.bd",
   },
   theme: {
@@ -123,7 +123,7 @@ export const schoolConfig = {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="px-3 py-1 bg-surface-2 hover:bg-primary-50 border border-line/30 text-ink rounded-[var(--radius-input)] text-xs font-medium flex items-center gap-1 transition-colors"
+                className="px-3 py-1 bg-surface-2 hover:bg-surface border border-line/30 text-ink rounded-[var(--radius-input)] text-xs font-medium flex items-center gap-1 transition-colors"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? t('কপি হয়েছে!', 'Copied!') : t('কোড কপি করুন', 'Copy Code')}</span>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export type Language = 'bn' | 'en';
 
@@ -37,17 +37,24 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return 'bn'; // Default Bangla as requested
   });
 
-  const setLang = (newLang: Language) => {
+  const setLang = useCallback((newLang: Language) => {
     setLangState(newLang);
     if (typeof window !== 'undefined') {
       localStorage.setItem('school_template_lang', newLang);
       document.documentElement.lang = newLang;
     }
-  };
+  }, []);
 
-  const toggleLang = () => {
-    setLang(lang === 'bn' ? 'en' : 'bn');
-  };
+  const toggleLang = useCallback(() => {
+    setLangState((prev) => {
+      const next: Language = prev === 'bn' ? 'en' : 'bn';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('school_template_lang', next);
+        document.documentElement.lang = next;
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -55,20 +62,31 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [lang]);
 
-  const t = (bnText: string, enText: string) => {
-    return lang === 'bn' ? bnText : enText;
-  };
+  const t = useCallback(
+    (bnText: string, enText: string) => {
+      return lang === 'bn' ? bnText : enText;
+    },
+    [lang]
+  );
 
-  const formatNumber = (val: number | string): string => {
-    const str = String(val);
-    if (lang === 'bn') {
-      return str.replace(/[0-9]/g, (digit) => englishToBengaliDigits[digit] || digit);
-    }
-    return str;
-  };
+  const formatNumber = useCallback(
+    (val: number | string): string => {
+      const str = String(val);
+      if (lang === 'bn') {
+        return str.replace(/[0-9]/g, (digit) => englishToBengaliDigits[digit] || digit);
+      }
+      return str;
+    },
+    [lang]
+  );
+
+  const value = useMemo(
+    () => ({ lang, setLang, toggleLang, t, formatNumber }),
+    [lang, setLang, toggleLang, t, formatNumber]
+  );
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, toggleLang, t, formatNumber }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

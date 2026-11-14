@@ -52,7 +52,7 @@ export const StatsStrip: React.FC = () => {
           {items.map((item, idx) => (
             <div
               key={idx}
-              className="bg-surface-card rounded-[var(--radius-card)] px-4 py-4 sm:px-5 sm:py-5 border border-line/30 shadow-xs flex items-center gap-3.5"
+              className="bg-surface-card rounded-[var(--radius-card)] px-4 py-4 sm:px-5 sm:py-5 border border-line/30 shadow-xs hover:shadow-sm transition-shadow flex items-center gap-3.5"
             >
               <div className="w-11 h-11 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 flex items-center justify-center shrink-0">
                 {item.icon}

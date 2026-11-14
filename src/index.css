@@ -67,6 +67,11 @@
     line-height: 1.7; /* Crucial: 1.7 line-height prevents Bangla conjuncts (যুক্তাক্ষর) from clipping */
     background-color: var(--token-surface);
     color: var(--token-ink);
+    transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+  }
+
+  button, a, [role="button"], input, select, textarea {
+    touch-action: manipulation;
   }
 
   h1, h2, h3, h4, .font-heading {

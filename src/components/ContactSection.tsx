@@ -47,38 +47,37 @@ export const ContactSection: React.FC = () => {
           <div className="lg:col-span-5 space-y-6">
             
             {/* Campus Address Card */}
-            <div className="bg-surface-card rounded-[var(--radius-card)] p-6 border border-line/30 shadow-xs">
+            <div className="bg-surface-card rounded-[var(--radius-card)] p-6 sm:p-7 border border-line/30 shadow-xs">
               <div className="flex items-start gap-3.5">
-                <div className="p-3 rounded-[var(--radius-btn)] bg-primary-100 text-primary-800 border border-primary-300 shrink-0">
+                <div className="p-3 rounded-[var(--radius-btn)] bg-surface-2 text-primary-600 border border-line/30 shrink-0">
                   <MapPin className="w-6 h-6" />
                 </div>
-                <div>
-                  <h3 className="font-heading font-bold text-lg text-ink">
+                <div className="min-w-0">
+                  <h3 className="font-heading font-bold text-lg text-ink leading-snug">
                     {lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn}
                   </h3>
                   <p className="text-sm text-ink-muted mt-1 leading-[1.6]">
                     {schoolSettings.addressLine}, {schoolSettings.area}
                   </p>
                   <p className="text-xs text-ink-muted font-medium mt-0.5">
-                    {schoolSettings.upazila}, {schoolSettings.district}, {schoolConfig.location.country[lang]}
+                    {schoolSettings.upazila}{schoolSettings.postCode ? ` - ${schoolSettings.postCode}` : ''}, {schoolSettings.district}, {schoolConfig.location.country[lang]}
                   </p>
 
-                  <div className="mt-3 pt-3 border-t border-line/20 text-xs text-ink-muted space-y-1">
-                    <div>
+                  {schoolSettings.area === schoolConfig.location.area.bn && (
+                    <div className="mt-3 pt-3 border-t border-line/20 text-xs text-ink-muted">
                       <strong className="text-ink">{t('চেনার সহজ উপায়:', 'Landmark:')}</strong> {schoolConfig.location.landmark[lang]}
                     </div>
-                    <div className="text-[11px] font-semibold text-primary-700 dark:text-primary-300">
-                      {schoolConfig.brand.productName} · {lang === 'bn' ? schoolConfig.brand.attributionBn : schoolConfig.brand.attribution}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
               {/* Road Directions */}
-              <div className="mt-4 p-3 bg-surface-2 rounded-[var(--radius-input)] border border-line/25 flex items-start gap-2 text-xs text-ink-muted">
-                <Navigation className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" />
-                <span>{schoolConfig.location.directions[lang]}</span>
-              </div>
+              {schoolSettings.area === schoolConfig.location.area.bn && (
+                <div className="mt-4 p-3 bg-surface-2 rounded-[var(--radius-input)] border border-line/25 flex items-start gap-2 text-xs text-ink-muted leading-[1.6]">
+                  <Navigation className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" />
+                  <span>{schoolConfig.location.directions[lang]}</span>
+                </div>
+              )}
             </div>
 
             {/* Quick Contact Numbers & Hours */}
@@ -92,16 +91,18 @@ export const ContactSection: React.FC = () => {
                 </div>
                 <a
                   href={`tel:${schoolSettings.phonePrimary}`}
-                  className="block text-sm sm:text-base font-bold text-ink hover:text-primary-700 dark:hover:text-primary-300 transition-colors font-mono"
+                  className="block text-sm sm:text-base font-bold text-ink hover:text-primary-600 transition-colors font-mono"
                 >
                   {schoolSettings.phonePrimary}
                 </a>
-                <a
-                  href={`tel:${schoolSettings.phoneSecondary}`}
-                  className="block text-xs text-ink-muted hover:text-ink transition-colors mt-0.5 font-mono"
-                >
-                  {schoolSettings.phoneSecondary}
-                </a>
+                {schoolSettings.phoneSecondary && (
+                  <a
+                    href={`tel:${schoolSettings.phoneSecondary}`}
+                    className="block text-xs text-ink-muted hover:text-ink transition-colors mt-0.5 font-mono"
+                  >
+                    {schoolSettings.phoneSecondary}
+                  </a>
+                )}
               </div>
 
               {/* WhatsApp Direct */}
@@ -132,7 +133,7 @@ export const ContactSection: React.FC = () => {
                   <Clock className="w-4 h-4 text-accent" />
                   <span>{t('অফিস সময়সূচি', 'Office Visiting Hours')}</span>
                 </div>
-                <p className="text-xs sm:text-sm text-ink font-medium">
+                <p className="text-xs sm:text-sm text-ink font-medium leading-[1.6]">
                   {schoolConfig.contact.officeHours[lang]}
                 </p>
               </div>

@@ -3,9 +3,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 1. Single OWNER_EMAIL constant at the top
+    // 1. Initial Fallback Owner & Hardcoded Developer Allowlist
+    // BUSINESS PROTECTION:
+    // After the developer sets the first real school Principal as Owner
+    // (`ownershipLocked: true`), normal school Owners MUST NOT be able to
+    // transfer ownership or resell/reassign the template to another Gmail.
+    // Only accounts listed in `developerEmails()` may write `settings/ownership`
+    // or alter `ownerEmail` / `ownershipLocked` anywhere in Firestore.
     function ownerEmail() {
       return "rubelahmedrex@gmail.com";
+    }
+
+    function developerEmails() {
+      return ["rubelahmedrex@gmail.com"];
     }
 
     // Default deny all unmatched documents
@@ -13,25 +23,37 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Authentication & Role Helpers
+    // Authentication & Role Helpers (Single Owner at a time + Developer Lock)
     function isSignedIn() {
       return request.auth != null && request.auth.token.email_verified == true;
     }
 
+    function isDeveloper() {
+      return isSignedIn() && request.auth.token.email in developerEmails();
+    }
+
+    function currentOwnerEmail() {
+      return exists(/databases/$(database)/documents/settings/ownership)
+        ? get(/databases/$(database)/documents/settings/ownership).data.ownerEmail
+        : ownerEmail();
+    }
+
     function isOwner() {
-      return isSignedIn() && (
-        request.auth.token.email == ownerEmail() ||
-        (exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) &&
-         get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == "owner")
-      );
+      return isSignedIn() && request.auth.token.email == currentOwnerEmail();
     }
 
     function isModerator() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == "moderator";
     }
 
     function isAdmin() {
       return isOwner() || isModerator();
+    }
+
+    function isValidId(docId) {
+      return docId is string && docId.size() >= 1 && docId.size() <= 128 && docId.matches('^[a-zA-Z0-9_-]+$');
     }
 
     // Helper for validating public admission application creations
@@ -87,23 +109,78 @@ service cloud.firestore {
     }
 
     // Admins Collection:
-    // Signed-in user may read only their own admin doc; only admins may list; only owner may write.
+    // - Signed-in users can read their own admin record to determine role.
+    // - Only Owner or Developer can list all admins (Moderators cannot enumerate admins).
+    // - Normal Owner can only manage 'moderator' entries (or sync their own 'owner' entry);
+    //   only Developer can assign 'owner' role to another email during ownership handover.
     match /admins/{email} {
-      allow get: if isSignedIn() && (request.auth.token.email == email || isAdmin());
-      allow list: if isAdmin();
-      allow write: if isOwner();
+      allow get: if isSignedIn() && (request.auth.token.email == email || isOwner() || isDeveloper());
+      allow list: if isOwner() || isDeveloper();
+      allow create, update: if isDeveloper() || (
+        isOwner() &&
+        request.resource.data.keys().hasAll(['email', 'role']) &&
+        request.resource.data.email == email &&
+        (
+          (email == request.auth.token.email && request.resource.data.role == 'owner') ||
+          (email != request.auth.token.email && request.resource.data.role == 'moderator')
+        )
+      );
+      allow delete: if isDeveloper() || (isOwner() && email != currentOwnerEmail());
     }
 
-    // School Settings: Public read, written by admins
+    // School Identity & Settings:
+    // - Public read for website visitors.
+    // - Editable by Owner (Principal) ONLY — Moderators have ZERO write access.
+    // - Normal Owner CANNOT add or modify `ownerEmail` or `ownershipLocked` in settings/school.
+    function isSchoolSettingsSafeForNormalOwner(incomingData, existingResource) {
+      let touchesOwnerEmail = 'ownerEmail' in incomingData &&
+        (existingResource == null || !('ownerEmail' in existingResource.data) || incomingData.ownerEmail != existingResource.data.ownerEmail);
+      let touchesOwnershipLocked = 'ownershipLocked' in incomingData &&
+        (existingResource == null || !('ownershipLocked' in existingResource.data) || incomingData.ownershipLocked != existingResource.data.ownershipLocked);
+      return !touchesOwnerEmail && !touchesOwnershipLocked;
+    }
+
     match /settings/school {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isDeveloper() || (isOwner() && isSchoolSettingsSafeForNormalOwner(request.resource.data, resource));
+      allow delete: if false;
+    }
+
+    // Single-Owner Lock & Handover Pointer:
+    // - Signed-in users can read `get` to resolve their active role (listing disabled).
+    // - CRITICAL BUSINESS RULE: ONLY hardcoded Developer accounts (`isDeveloper()`)
+    //   may create or update `ownerEmail` / `ownershipLocked`. Normal Owners (Principals)
+    //   and Moderators receive PERMISSION_DENIED on write.
+    function isValidOwnershipWrite(data) {
+      let requiredKeys = ['ownerEmail', 'ownershipLocked', 'updatedAt'];
+      let allowedKeys = [
+        'ownerEmail', 'ownershipLocked', 'previousOwnerEmail',
+        'transferredBy', 'transferredAt', 'updatedAt'
+      ];
+      return data.keys().hasAll(requiredKeys) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.ownerEmail is string &&
+             data.ownerEmail.size() >= 5 && data.ownerEmail.size() <= 160 &&
+             data.ownerEmail.matches('^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$') &&
+             data.ownershipLocked is bool &&
+             data.updatedAt == request.time &&
+             (!('transferredAt' in data) || data.transferredAt == request.time) &&
+             (!('previousOwnerEmail' in data) || (data.previousOwnerEmail is string && data.previousOwnerEmail.size() <= 160)) &&
+             (!('transferredBy' in data) || (data.transferredBy is string && data.transferredBy.size() <= 160));
+    }
+
+    match /settings/ownership {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create, update: if isDeveloper() && isValidOwnershipWrite(request.resource.data);
+      allow delete: if false;
     }
 
     // Fees & Payments: Public read (for /apply instructions), written by OWNER ONLY
     match /settings/fees {
       allow read: if true;
-      allow write: if isOwner();
+      allow create, update: if isOwner();
+      allow delete: if false;
     }
 
     // Appearance & Theme Configuration: Public read, written by OWNER ONLY with strict schema
@@ -141,10 +218,11 @@ service cloud.firestore {
 
     match /settings/appearance {
       allow read: if true;
-      allow write: if isOwner() && isValidAppearance(request.resource.data);
+      allow create, update: if isOwner() && isValidAppearance(request.resource.data);
+      allow delete: if false;
     }
 
-    // Notices: Public read, written by admins
+    // Notices: Public read, written by admins (Owner or Moderator)
     match /notices/{noticeId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -172,8 +250,6 @@ service cloud.firestore {
 
     // Minimal Public Application Status (for parents to query status via /status)
     // Public get by id allowed; listing prohibited (no enumeration).
-    // Public create allowed only when creating pending status matching doc id.
-    // Admin update and delete.
     match /application_status/{appNumber} {
       allow get: if true;
       allow list: if false;
@@ -182,12 +258,6 @@ service cloud.firestore {
     }
 
     // Campus Visit Bookings & Inquiries:
-    // Public may create only with strict schema validation, consent=true, status="new", server timestamp.
-    // Reading, status updates, and deletion are strictly restricted to verified admins.
-    function isValidId(docId) {
-      return docId is string && docId.size() >= 1 && docId.size() <= 128 && docId.matches('^[a-zA-Z0-9_-]+$');
-    }
-
     function isValidInquiryCreate(data) {
       let requiredKeys = [
         'parentName', 'phone', 'preferredDateTime', 'visitorCount', 'consent', 'status', 'createdAt'
@@ -209,13 +279,13 @@ service cloud.firestore {
     }
 
     function isValidInquiryUpdate(data) {
-      return incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']) &&
              data.status in ['new', 'contacted', 'completed'] &&
              data.updatedAt == request.time &&
-             data.parentName == existing().parentName &&
-             data.phone == existing().phone &&
-             data.consent == existing().consent &&
-             data.createdAt == existing().createdAt;
+             data.parentName == resource.data.parentName &&
+             data.phone == resource.data.phone &&
+             data.consent == resource.data.consent &&
+             data.createdAt == resource.data.createdAt;
     }
 
     match /inquiries/{inquiryId} {
@@ -252,12 +322,11 @@ service cloud.firestore {
 
     match /settings/sms {
       allow read: if isOwner();
-      allow write: if isOwner() && isValidSmsSettings(request.resource.data);
+      allow create, update: if isOwner() && isValidSmsSettings(request.resource.data);
+      allow delete: if false;
     }
 
     // SMS Notification Queue & Logs:
-    // Admins (Owner/Moderator) can create validated notification triggers on status updates;
-    // ONLY Owner can read logs or delete entries; client updates forbidden (reserved for Cloud Functions).
     function isValidNotificationQueueCreate(data) {
       let requiredKeys = [
         'eventType', 'channel', 'recipientPhone', 'recipientRole',
@@ -296,10 +365,23 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Activity Logs: Owner reads, Admins create
+    // Activity Logs:
+    // - Owner & Developer can read audit trail (Moderators have ZERO read access).
+    // - Admins or Developer can append validated immutable log entries.
+    function isValidActivityLogCreate(data) {
+      let requiredKeys = ['action', 'details', 'performedByEmail', 'timestamp', 'createdAt'];
+      return data.keys().hasAll(requiredKeys) &&
+             data.keys().hasOnly(requiredKeys) &&
+             data.action is string && data.action.size() >= 2 && data.action.size() <= 200 &&
+             data.details is string && data.details.size() >= 2 && data.details.size() <= 1000 &&
+             data.performedByEmail is string && data.performedByEmail == request.auth.token.email &&
+             data.timestamp is string && data.timestamp.size() <= 60 &&
+             data.createdAt == request.time;
+    }
+
     match /activity_logs/{logId} {
-      allow read: if isOwner();
-      allow create: if isAdmin();
+      allow read: if isOwner() || isDeveloper();
+      allow create: if (isAdmin() || isDeveloper()) && isValidActivityLogCreate(request.resource.data);
       allow update, delete: if false;
     }
   }

@@ -1,9 +1,17 @@
 /**
  * School Configuration Template & Multi-Level Presets
- * 
+ *
+ * Commercial White-Label Architecture:
+ * - Static fallback defaults live here so a fresh Firebase project renders immediately.
+ * - Live school identity (`settings/school`), appearance (`settings/appearance`),
+ *   fees (`settings/fees`), and ownership lock (`settings/ownership`) live in Firestore
+ *   and override these defaults automatically after Developer/Owner setup in `/admin`.
+ * - Multi-School Handover: Keep `developerEmails` synchronized with `developerEmails()`
+ *   in `firestore.rules`. Never hardcode per-client API keys or SMS secrets here.
+ *
  * Supports Kindergarten (Play to Class 5), Primary (Class 1 to 5),
  * and High School (Class 6 to 10 with Science, Business Studies & Humanities groups ending at SSC).
- * Themes supported: "dawn" (warm sunrise, playful) and "campus" (collegiate navy/emerald, sharp).
+ * Themes supported: "dawn", "campus", "meadow", "ocean", "royal", and "slate" (light & dark).
  */
 
 export type SchoolType = 'kindergarten' | 'primary' | 'highschool' | 'combined';
@@ -88,6 +96,13 @@ export interface SchoolConfig {
   schoolCode?: string;
   registrationNo?: string;
   ownerEmail: string;
+  /**
+   * BUSINESS PROTECTION:
+   * Only accounts in `developerEmails` (must match `developerEmails()` in firestore.rules)
+   * are authorized to assign or change `ownerEmail` and `ownershipLocked`.
+   * Once handed over to a school Principal, the Principal cannot transfer ownership.
+   */
+  developerEmails: string[];
   applicationPrefix: string;
   showTemplateInspector: boolean;
   aboutParagraph: {
@@ -168,6 +183,7 @@ export interface SchoolConfig {
       bn: string;
       en: string;
     };
+    postCode?: string;
     country: {
       bn: string;
       en: string;
@@ -907,6 +923,7 @@ export const defaultSchoolConfig: SchoolConfig = {
   schoolCode: "AAKS-4509",
   registrationNo: "কুড়ি/রাজা/কেজি/২০১৬-৭৮",
   ownerEmail: "rubelahmedrex@gmail.com",
+  developerEmails: ["rubelahmedrex@gmail.com"],
   applicationPrefix: "AAKS",
   showTemplateInspector: false,
   aboutParagraph: {
@@ -978,6 +995,7 @@ export const defaultSchoolConfig: SchoolConfig = {
       bn: "কুড়িগ্রাম",
       en: "Kurigram",
     },
+    postCode: "5610",
     country: {
       bn: "বাংলাদেশ",
       en: "Bangladesh",

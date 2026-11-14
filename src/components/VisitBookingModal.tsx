@@ -44,7 +44,7 @@ export const VisitBookingModal: React.FC<VisitBookingModalProps> = ({ isOpen, on
             type="button"
             onClick={onClose}
             aria-label={t('বন্ধ করুন', 'Close dialog')}
-            className="p-2 rounded-full bg-surface-2 hover:bg-primary-50 text-ink-muted hover:text-ink transition-colors shrink-0"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-surface-2 hover:bg-surface border border-line/30 text-ink-muted hover:text-ink transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

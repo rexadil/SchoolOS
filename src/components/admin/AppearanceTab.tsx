@@ -5,6 +5,7 @@ import { useSchoolData } from '../../context/SchoolDataContext';
 import { compressImage } from '../../utils/imageCompressor';
 import {
   ALL_THEME_IDS,
+  AnnouncementStyle,
   AppearanceSettings,
   DEFAULT_APPEARANCE,
   DEFAULT_SECTION_ORDER,
@@ -307,8 +308,26 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({ onNotify }) => {
           {draft.announcement.enabled && (
             <div
               style={{
-                backgroundColor: previewTokens.accent,
-                color: previewTokens.onAccent,
+                backgroundColor:
+                  draft.announcement.style === 'primary'
+                    ? previewTokens.primary600
+                    : draft.announcement.style === 'warning'
+                    ? previewTokens.warningSoft
+                    : draft.announcement.style === 'success'
+                    ? previewTokens.successSoft
+                    : draft.announcement.style === 'neutral'
+                    ? previewTokens.surface2
+                    : previewTokens.accent,
+                color:
+                  draft.announcement.style === 'primary'
+                    ? previewTokens.onPrimary
+                    : draft.announcement.style === 'warning'
+                    ? previewTokens.onWarningSoft
+                    : draft.announcement.style === 'success'
+                    ? previewTokens.onSuccessSoft
+                    : draft.announcement.style === 'neutral'
+                    ? previewTokens.ink
+                    : previewTokens.onAccent,
               }}
               className="px-4 py-1.5 text-center text-xs font-bold"
             >
@@ -908,6 +927,42 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({ onNotify }) => {
                 placeholder="#apply"
                 className="w-full px-3.5 py-2 rounded-[var(--radius-input)] border border-line/40 bg-surface text-ink text-xs font-mono focus:border-primary-600 focus-visible:ring-2 focus-visible:ring-ring/30 outline-none"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-ink mb-1.5">
+                {t('ব্যানারের রঙের ধরন (Color Style)', 'Banner Color Style')}
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {(
+                  [
+                    { id: 'accent', labelBn: 'অ্যাকসেন্ট', labelEn: 'Accent', cls: 'bg-accent text-on-accent' },
+                    { id: 'primary', labelBn: 'মূল থিম', labelEn: 'Primary', cls: 'bg-primary-600 text-on-primary' },
+                    { id: 'warning', labelBn: 'সতর্কতা', labelEn: 'Notice', cls: 'bg-warning-soft text-on-warning-soft' },
+                    { id: 'success', labelBn: 'সবুজ', labelEn: 'Success', cls: 'bg-success-soft text-on-success-soft' },
+                    { id: 'neutral', labelBn: 'সাদামাটা', labelEn: 'Neutral', cls: 'bg-surface-2 text-ink' },
+                  ] as Array<{ id: AnnouncementStyle; labelBn: string; labelEn: string; cls: string }>
+                ).map((st) => {
+                  const selected = (draft.announcement.style || 'accent') === st.id;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          announcement: { ...prev.announcement, style: st.id },
+                        }))
+                      }
+                      className={`py-2 px-1.5 rounded-[var(--radius-btn)] text-[11px] font-bold border transition-all ${st.cls} ${
+                        selected ? 'ring-2 ring-ring border-ink shadow-xs' : 'border-line/30 opacity-85 hover:opacity-100'
+                      }`}
+                    >
+                      {lang === 'bn' ? st.labelBn : st.labelEn}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

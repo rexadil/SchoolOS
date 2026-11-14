@@ -48,28 +48,45 @@ export const TeacherSection: React.FC = () => {
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
             <div className="lg:col-span-8">
-              <div className="flex items-center gap-2 text-xs font-bold text-primary-700 dark:text-primary-300 uppercase tracking-wider mb-2">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{schoolConfig.principalMessage.title[lang]}</span>
-              </div>
+              {(() => {
+                const pTitle =
+                  (lang === 'bn' ? schoolSettings.principalTitleBn : schoolSettings.principalTitleEn)?.trim() ||
+                  schoolConfig.principalMessage.title[lang];
+                const pMessage =
+                  (lang === 'bn' ? schoolSettings.principalMessageBn : schoolSettings.principalMessageEn)?.trim() ||
+                  schoolConfig.principalMessage.message[lang];
+                const pName =
+                  (lang === 'bn' ? schoolSettings.principalNameBn : schoolSettings.principalNameEn)?.trim() ||
+                  schoolConfig.principalMessage.author[lang];
+                const sName = lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn;
 
-              <blockquote className="font-heading text-ink text-base sm:text-lg italic leading-[1.8]">
-                "{schoolConfig.principalMessage.message[lang]}"
-              </blockquote>
+                return (
+                  <>
+                    <div className="flex items-center gap-2 text-xs font-bold text-primary-700 dark:text-primary-300 uppercase tracking-wider mb-2">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{pTitle}</span>
+                    </div>
 
-              <div className="mt-6 pt-4 border-t border-line/25 flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-primary-600 text-on-primary flex items-center justify-center font-bold text-base shadow-xs">
-                  {schoolConfig.principalMessage.author[lang].charAt(0)}
-                </div>
-                <div>
-                  <h4 className="font-bold text-ink text-sm sm:text-base">
-                    {schoolConfig.principalMessage.author[lang]}
-                  </h4>
-                  <p className="text-xs text-ink-muted">
-                    {t(`প্রধান শিক্ষিকা, ${schoolSettings.nameBn}`, `Headmistress, ${schoolSettings.nameEn}`)}
-                  </p>
-                </div>
-              </div>
+                    <blockquote className="font-heading text-ink text-base sm:text-lg italic leading-[1.8]">
+                      "{pMessage}"
+                    </blockquote>
+
+                    <div className="mt-6 pt-4 border-t border-line/25 flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-primary-600 text-on-primary flex items-center justify-center font-bold text-base shadow-xs">
+                        {pName.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-ink text-sm sm:text-base">
+                          {pName}
+                        </h4>
+                        <p className="text-xs text-ink-muted">
+                          {t(`অধ্যক্ষ / প্রধান শিক্ষক, ${sName}`, `Principal / Head Teacher, ${sName}`)}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Quick highlight box */}
@@ -99,8 +116,19 @@ export const TeacherSection: React.FC = () => {
 
         {/* Teachers Cards Grid */}
         {staffList.length === 0 ? (
-          <div className="p-8 rounded-[var(--radius-card)] bg-surface-card border border-line/30 text-center text-sm text-ink-muted">
-            {t('শিক্ষকমণ্ডলীর তথ্য শীঘ্রই যুক্ত করা হবে।', 'Faculty profiles will be updated soon.')}
+          <div className="p-10 rounded-[var(--radius-card)] bg-surface-card border border-line/30 text-center space-y-2.5 max-w-lg mx-auto">
+            <div className="w-12 h-12 rounded-[var(--radius-btn)] bg-surface-2 border border-line/25 flex items-center justify-center mx-auto text-primary-600">
+              <GraduationCap className="w-6 h-6" />
+            </div>
+            <h3 className="font-heading font-bold text-base text-ink">
+              {t('শিক্ষকমণ্ডলীর তথ্য হালনাগাদ হচ্ছে', 'Faculty Profiles Coming Soon')}
+            </h3>
+            <p className="text-xs sm:text-sm text-ink-muted leading-[1.7]">
+              {t(
+                'অ্যাডমিন প্যানেল থেকে শিক্ষকদের নাম, পদবি ও ছবি যুক্ত করলে এখানে তা স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।',
+                'Faculty profiles, qualifications, and photos will appear here once published from the school admin panel.'
+              )}
+            </p>
           </div>
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -121,8 +149,13 @@ export const TeacherSection: React.FC = () => {
                       <img
                         src={teacher.photoUrl}
                         alt={displayName}
+                        width={56}
+                        height={56}
                         loading="lazy"
                         decoding="async"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
                         className="w-14 h-14 rounded-[var(--radius-btn)] object-cover shadow-xs border border-line/30"
                       />
                     ) : (

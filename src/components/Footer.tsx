@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 
 interface FooterProps {
-  onOpenAdmission: () => void;
   onOpenTemplateConfig: () => void;
   onOpenVisitModal?: () => void;
   onNavigateApply: () => void;
@@ -51,8 +50,8 @@ export const Footer: React.FC<FooterProps> = ({
   };
 
   const socialItems = [
-    { key: 'facebook', url: appearance.socialLinks.facebook, label: 'Facebook', icon: <Facebook className="w-4 h-4" /> },
-    { key: 'youtube', url: appearance.socialLinks.youtube, label: 'YouTube', icon: <Youtube className="w-4 h-4" /> },
+    { key: 'facebook', url: schoolSettings.facebookUrl || appearance.socialLinks.facebook, label: 'Facebook', icon: <Facebook className="w-4 h-4" /> },
+    { key: 'youtube', url: schoolSettings.youtubeUrl || appearance.socialLinks.youtube, label: 'YouTube', icon: <Youtube className="w-4 h-4" /> },
     { key: 'instagram', url: appearance.socialLinks.instagram, label: 'Instagram', icon: <Instagram className="w-4 h-4" /> },
     { key: 'website', url: appearance.socialLinks.website, label: 'Website', icon: <Globe className="w-4 h-4" /> },
   ].filter((item) => Boolean(item.url && item.url.trim()));
@@ -69,6 +68,8 @@ export const Footer: React.FC<FooterProps> = ({
                 <img
                   src={activeLogoUrl}
                   alt={lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn}
+                  width={40}
+                  height={40}
                   loading="lazy"
                   decoding="async"
                   className="w-10 h-10 rounded-[var(--radius-btn)] object-contain p-0.5 bg-surface-card border border-line/35"
@@ -87,7 +88,7 @@ export const Footer: React.FC<FooterProps> = ({
                   {lang === 'bn' ? schoolSettings.nameBn : schoolSettings.nameEn}
                 </span>
                 <span className="text-[11px] font-bold tracking-wider uppercase text-primary-700 dark:text-primary-300">
-                  {schoolConfig.brand.productName}
+                  {(lang === 'bn' ? schoolSettings.shortNameBn : schoolSettings.shortNameEn) || schoolConfig.brand.productName}
                 </span>
               </div>
             </div>
@@ -176,30 +177,30 @@ export const Footer: React.FC<FooterProps> = ({
                 <button
                   type="button"
                   onClick={onNavigateApply}
-                  className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5"
+                  className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5 py-0.5"
                 >
                   <FileText className="w-3.5 h-3.5 text-primary-600" />
-                  <span>{t('অনলাইন ভর্তি ফরম (/apply)', 'Online Admission (/apply)')}</span>
+                  <span>{t('অনলাইন ভর্তি আবেদন', 'Online Admission Form')}</span>
                 </button>
               </li>
               <li>
                 <button
                   type="button"
                   onClick={onNavigateStatus}
-                  className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5"
+                  className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5 py-0.5"
                 >
                   <Search className="w-3.5 h-3.5 text-primary-600" />
-                  <span>{t('ভর্তি আবেদনের অবস্থা (/status)', 'Application Status (/status)')}</span>
+                  <span>{t('ভর্তি আবেদনের অবস্থা যাচাই', 'Check Application Status')}</span>
                 </button>
               </li>
               <li>
                 <button
                   type="button"
                   onClick={onNavigateAdmin}
-                  className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5"
+                  className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5 py-0.5"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-                  <span>{t('অ্যাডমিন পোর্টাল (/admin)', 'Admin Portal (/admin)')}</span>
+                  <span>{t('অ্যাডমিন পোর্টাল', 'Admin Portal')}</span>
                 </button>
               </li>
               <li>
@@ -222,10 +223,10 @@ export const Footer: React.FC<FooterProps> = ({
                   <button
                     type="button"
                     onClick={onOpenVisitModal}
-                    className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5"
+                    className="hover:text-primary-600 transition-colors text-left flex items-center gap-1.5 py-0.5"
                   >
                     <CalendarCheck className="w-3.5 h-3.5 text-primary-600" />
-                    <span>{t('ক্যাম্পাস ভিজিট বুকিং (#visit)', 'Book a Campus Visit (#visit)')}</span>
+                    <span>{t('ক্যাম্পাস ভিজিট বুকিং', 'Book a Campus Visit')}</span>
                   </button>
                 </li>
               )}
@@ -253,7 +254,7 @@ export const Footer: React.FC<FooterProps> = ({
               <p className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-primary-600 shrink-0 mt-1" />
                 <span>
-                  {schoolSettings.addressLine}, {schoolSettings.area}, {schoolSettings.upazila}, {schoolSettings.district}
+                  {schoolSettings.addressLine}, {schoolSettings.area}, {schoolSettings.upazila}{schoolSettings.postCode ? ` - ${schoolSettings.postCode}` : ''}, {schoolSettings.district}
                 </span>
               </p>
 
@@ -276,16 +277,16 @@ export const Footer: React.FC<FooterProps> = ({
               <button
                 type="button"
                 onClick={onNavigateApply}
-                className="w-full py-2.5 px-4 font-bold text-xs rounded-[var(--radius-btn)] bg-primary-600 hover:bg-primary-700 text-on-primary transition-colors shadow-sm"
+                className="w-full min-h-[44px] py-2.5 px-4 font-bold text-xs sm:text-sm rounded-[var(--radius-btn)] bg-primary-600 hover:bg-primary-700 text-on-primary transition-colors shadow-sm"
               >
-                {t('অনলাইন ভর্তি আবেদন ফরম (/apply)', 'Online Admission Form (/apply)')}
+                {t('অনলাইন ভর্তি আবেদন করুন', 'Apply for Admission')}
               </button>
 
               {onOpenVisitModal && (
                 <button
                   type="button"
                   onClick={onOpenVisitModal}
-                  className="w-full py-2.5 px-4 font-bold text-xs rounded-[var(--radius-btn)] bg-surface-card hover:bg-surface border border-line/35 text-ink transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full min-h-[44px] py-2.5 px-4 font-bold text-xs sm:text-sm rounded-[var(--radius-btn)] bg-surface-card hover:bg-surface border border-line/35 text-ink transition-colors flex items-center justify-center gap-1.5"
                 >
                   <CalendarCheck className="w-3.5 h-3.5 text-accent" />
                   <span>{t('ক্যাম্পাস ভিজিট বুক করুন', 'Book a Campus Visit')}</span>

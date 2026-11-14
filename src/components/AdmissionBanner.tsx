@@ -44,12 +44,13 @@ export const AdmissionBanner: React.FC<AdmissionBannerProps> = ({
   };
 
   useEffect(() => {
+    if (closedInfo.closed || targetMs === null) return;
     const interval = setInterval(() => {
       setNowMs(Date.now());
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [closedInfo.closed, targetMs]);
 
   const timeLeft = computeTimeLeft(targetMs, nowMs);
   const displayDeadline = lang === 'bn' ? closedInfo.formattedEndDateBn : closedInfo.formattedEndDateEn;
@@ -60,7 +61,7 @@ export const AdmissionBanner: React.FC<AdmissionBannerProps> = ({
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-surface-card border border-line/30 rounded-[var(--radius-card)] p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-md">
             <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-danger-soft border border-danger/30 rounded-full text-xs font-bold text-on-danger-soft uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-danger-soft border border-danger/30 rounded-[var(--radius-btn)] text-xs font-bold text-on-danger-soft uppercase tracking-wider">
                 <Lock className="w-3.5 h-3.5 text-on-danger-soft" />
                 <span>{t('আবেদন বন্ধ', 'Admission Closed')}</span>
               </div>
@@ -82,12 +83,12 @@ export const AdmissionBanner: React.FC<AdmissionBannerProps> = ({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 shrink-0 w-full lg:w-auto">
               {onBookVisit && (
                 <button
                   type="button"
                   onClick={onBookVisit}
-                  className="px-5 py-3.5 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface border border-line/35 text-ink font-bold text-sm transition-colors flex items-center gap-2"
+                  className="w-full sm:w-auto min-h-[48px] px-5 py-3 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface border border-line/35 text-ink font-bold text-sm transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   <CalendarCheck className="w-4 h-4 text-accent" />
                   <span>{t('ক্যাম্পাস ভিজিট বুকিং', 'Book Campus Visit')}</span>
@@ -97,10 +98,10 @@ export const AdmissionBanner: React.FC<AdmissionBannerProps> = ({
                 <button
                   type="button"
                   onClick={onNavigateStatus}
-                  className="px-6 py-3.5 rounded-[var(--radius-btn)] bg-primary-600 hover:bg-primary-700 text-on-primary font-extrabold text-sm transition-colors flex items-center gap-2 shadow-md"
+                  className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-[var(--radius-btn)] bg-primary-600 hover:bg-primary-700 text-on-primary font-extrabold text-sm transition-colors flex items-center justify-center gap-2 shadow-md whitespace-nowrap"
                 >
                   <Search className="w-4 h-4" />
-                  <span>{t('আবেদনের অবস্থা দেখুন (#status)', 'Check Application Status')}</span>
+                  <span>{t('আবেদনের অবস্থা দেখুন', 'Check Application Status')}</span>
                 </button>
               )}
             </div>
@@ -201,7 +202,7 @@ export const AdmissionBanner: React.FC<AdmissionBannerProps> = ({
             </div>
 
             {/* Seats Remaining Indicator */}
-            <div className="w-full bg-warning-soft rounded-full py-1.5 px-3 mb-5 border border-warning/30 text-xs font-bold text-on-warning-soft">
+            <div className="w-full bg-warning-soft rounded-[var(--radius-btn)] py-2 px-3 mb-5 border border-warning/30 text-xs font-bold text-on-warning-soft">
               {t(`মোট অবশিষ্ট আসন: মাত্র ${formatNumber(schoolConfig.admission.availableSeats)} টি`, `Only ${formatNumber(schoolConfig.admission.availableSeats)} seats left`)}
             </div>
 
@@ -209,25 +210,25 @@ export const AdmissionBanner: React.FC<AdmissionBannerProps> = ({
             <button
               type="button"
               onClick={onOpenAdmission}
-              className="w-full py-4 px-6 rounded-[var(--radius-btn)] bg-primary-600 hover:bg-primary-700 active:scale-98 text-on-primary font-extrabold text-base transition-all duration-150 flex items-center justify-center gap-2 group shadow-lg"
+              className="w-full min-h-[48px] py-3.5 px-6 rounded-[var(--radius-btn)] bg-primary-600 hover:bg-primary-700 active:scale-98 text-on-primary font-extrabold text-base transition-all duration-150 flex items-center justify-center gap-2 group shadow-lg"
             >
-              <Sparkles className="w-5 h-5" />
+              <Sparkles className="w-5 h-5 shrink-0" />
               <span>{t('অনলাইন ভর্তি আবেদন করুন', 'Apply for Admission Online')}</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0" />
             </button>
 
             {onBookVisit && (
               <button
                 type="button"
                 onClick={onBookVisit}
-                className="w-full mt-2.5 py-2.5 px-4 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface border border-line/35 text-ink font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full min-h-[44px] mt-2.5 py-2.5 px-4 rounded-[var(--radius-btn)] bg-surface-2 hover:bg-surface border border-line/35 text-ink font-bold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2"
               >
-                <CalendarCheck className="w-4 h-4 text-accent" />
+                <CalendarCheck className="w-4 h-4 text-accent shrink-0" />
                 <span>{t('সরাসরি ক্যাম্পাস ভিজিট বুক করুন', 'Book a Campus Visit First')}</span>
               </button>
             )}
 
-            <span className="text-[11px] text-ink-muted mt-2.5">
+            <span className="text-[11px] text-ink-muted mt-3">
               {t('ফরম পূরণ করতে মাত্র ২ মিনিট সময় লাগবে', 'Takes only 2 minutes to submit')}
             </span>
 

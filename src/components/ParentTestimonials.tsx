@@ -61,7 +61,7 @@ export const ParentTestimonials: React.FC = () => {
 
                 {/* Author & Child Info */}
                 <div className="pt-4 border-t border-line/20 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-900 flex items-center justify-center font-bold text-sm shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-surface-2 border border-line/30 text-primary-700 dark:text-primary-300 flex items-center justify-center font-bold text-sm shrink-0">
                     {name.charAt(0)}
                   </div>
 

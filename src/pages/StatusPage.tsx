@@ -206,7 +206,7 @@ export const StatusPage: React.FC<StatusPageProps> = ({ onGoHome, onNavigateAppl
                 <input
                   type="text"
                   required
-                  placeholder="e.g. AA-20261110-3K8MNP"
+                  placeholder={t('আবেদন স্লিপের ট্র্যাকিং নম্বর লিখুন', 'Enter application tracking number')}
                   value={appNumber}
                   onChange={(e) => setAppNumber(e.target.value.toUpperCase())}
                   className="w-full px-4 py-2.5 rounded-[var(--radius-input)] border border-line/40 text-sm font-mono tracking-wider text-ink placeholder:text-ink-muted focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none uppercase bg-surface"
@@ -223,7 +223,7 @@ export const StatusPage: React.FC<StatusPageProps> = ({ onGoHome, onNavigateAppl
                 <input
                   type="tel"
                   required
-                  placeholder="01712345678"
+                  placeholder="01XXXXXXXXX"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-[var(--radius-input)] border border-line/40 text-sm font-mono text-ink placeholder:text-ink-muted focus:border-primary-600 focus:ring-2 focus:ring-ring/25 outline-none bg-surface"
@@ -353,11 +353,11 @@ export const StatusPage: React.FC<StatusPageProps> = ({ onGoHome, onNavigateAppl
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="px-4 py-2 bg-surface-2 hover:bg-primary-50 text-ink text-xs font-bold rounded-[var(--radius-btn)] border border-line/25 flex items-center gap-1.5 transition-colors"
+                    className="min-h-[40px] px-4 py-2 bg-surface-2 hover:bg-surface text-ink text-xs font-bold rounded-[var(--radius-btn)] border border-line/30 flex items-center gap-1.5 transition-colors"
                   >
                     <Printer className="w-3.5 h-3.5 text-ink-muted" />
                     <span>{t('প্রিন্ট করুন', 'Print Status')}</span>

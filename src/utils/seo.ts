@@ -194,14 +194,20 @@ export function syncSeoHeadAndSchema(params: {
   }
 
   // Dynamic School Schema.org JSON-LD
-  const sameAs = [
-    appearance.socialLinks.facebook,
-    appearance.socialLinks.youtube,
-    appearance.socialLinks.instagram,
-    appearance.socialLinks.website,
-  ]
-    .map((u) => (u || '').trim())
-    .filter((u) => /^https?:\/\//i.test(u));
+  const sameAs = Array.from(
+    new Set(
+      [
+        schoolSettings.facebookUrl,
+        schoolSettings.youtubeUrl,
+        appearance.socialLinks.facebook,
+        appearance.socialLinks.youtube,
+        appearance.socialLinks.instagram,
+        appearance.socialLinks.website,
+      ]
+        .map((u) => (u || '').trim())
+        .filter((u) => /^https?:\/\//i.test(u))
+    )
+  );
 
   const mapLat = schoolSettings.map?.lat ?? schoolConfig.map.lat;
   const mapLng = schoolSettings.map?.lng ?? schoolConfig.map.lng;
@@ -227,6 +233,7 @@ export function syncSeoHeadAndSchema(params: {
       streetAddress: `${schoolSettings.addressLine}, ${schoolSettings.area}`,
       addressLocality: schoolSettings.upazila,
       addressRegion: schoolSettings.district,
+      ...(schoolSettings.postCode ? { postalCode: schoolSettings.postCode } : {}),
       addressCountry: 'BD',
     },
     geo: {

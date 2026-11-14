@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   collection,
   doc,
@@ -11,7 +11,13 @@ import {
   orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType, DEMO_MODE } from '../firebase/config';
+import {
+  db,
+  handleFirestoreError,
+  OperationType,
+  DEMO_MODE,
+  isDeveloperEmail,
+} from '../firebase/config';
 import {
   schoolConfig as defaultStaticConfig,
   SchoolType,
@@ -23,16 +29,26 @@ import {
 } from '../config/schoolConfig';
 import { useAuth } from './AuthContext';
 import { generateApplicationNumber, computeStatusVerifyHash } from '../utils/applicationNumber';
+import {
+  SmsSettingsData,
+  NotificationQueueItem,
+  DEFAULT_SMS_SETTINGS,
+  normalizeSmsSettings,
+  prepareStatusNotificationPayload,
+} from '../utils/smsAutomation';
 
 export interface SchoolSettingsData {
   nameBn: string;
   nameEn: string;
+  shortNameBn: string;
+  shortNameEn: string;
   sloganBn: string;
   sloganEn: string;
   addressLine: string;
   area: string;
   upazila: string;
   district: string;
+  postCode: string;
   phonePrimary: string;
   phoneSecondary: string;
   whatsappNumber: string;
@@ -51,6 +67,14 @@ export interface SchoolSettingsData {
   mpoStatus?: string;
   schoolCode?: string;
   registrationNo?: string;
+  /** Read-only flag managed exclusively by Developer accounts once a school Principal is assigned */
+  ownershipLocked?: boolean;
+  principalNameBn: string;
+  principalNameEn: string;
+  principalTitleBn: string;
+  principalTitleEn: string;
+  principalMessageBn: string;
+  principalMessageEn: string;
   applyFields?: ApplyFieldsConfig;
   map?: {
     shareUrl?: string;
@@ -191,6 +215,8 @@ interface SchoolDataContextType {
   testimonials: TestimonialItem[];
   activityLogs: ActivityLogItem[];
   moderators: AdminUserItem[];
+  smsSettings: SmsSettingsData;
+  notificationQueue: NotificationQueueItem[];
   loading: boolean;
   demoMode: boolean;
   setDemoMode: (val: boolean) => void;
@@ -215,20 +241,27 @@ interface SchoolDataContextType {
   deleteInquiry: (inquiryId: string) => Promise<void>;
   saveTestimonial: (testimonial: Partial<TestimonialItem> & { id?: string }) => Promise<void>;
   deleteTestimonial: (testimonialId: string) => Promise<void>;
+  updateSmsSettings: (newSms: Partial<SmsSettingsData>) => Promise<void>;
+  queueNotification: (payload: Omit<NotificationQueueItem, 'id' | 'createdAt'>) => Promise<string>;
+  deleteNotificationItem: (notifId: string) => Promise<void>;
   addModerator: (email: string) => Promise<void>;
   removeModerator: (email: string) => Promise<void>;
+  transferOwnership: (newOwnerEmail: string) => Promise<void>;
   logActivity: (action: string, details: string) => Promise<void>;
 }
 
 const defaultSchoolSettings: SchoolSettingsData = {
   nameBn: defaultStaticConfig.identity.name.bn,
   nameEn: defaultStaticConfig.identity.name.en,
+  shortNameBn: defaultStaticConfig.identity.shortName.bn,
+  shortNameEn: defaultStaticConfig.identity.shortName.en,
   sloganBn: defaultStaticConfig.identity.slogan.bn,
   sloganEn: defaultStaticConfig.identity.slogan.en,
   addressLine: defaultStaticConfig.location.addressLine1.bn,
   area: defaultStaticConfig.location.area.bn,
   upazila: defaultStaticConfig.location.upazila.bn,
   district: defaultStaticConfig.location.district.bn,
+  postCode: defaultStaticConfig.location.postCode || '',
   phonePrimary: defaultStaticConfig.contact.phonePrimary,
   phoneSecondary: defaultStaticConfig.contact.phoneSecondary,
   whatsappNumber: defaultStaticConfig.contact.whatsappNumber,
@@ -239,14 +272,20 @@ const defaultSchoolSettings: SchoolSettingsData = {
   heroTitleEn: 'Inside every child lies an unawakened light',
   heroSubtitleBn: defaultStaticConfig.aboutParagraph?.bn || `${defaultStaticConfig.location.upazila.bn} এ ভীতিমুক্ত, আনন্দময় ও নৈতিক শিক্ষার পাঠশালা।`,
   heroSubtitleEn: defaultStaticConfig.aboutParagraph?.en || `A nurturing educational sanctuary in ${defaultStaticConfig.location.upazila.en}, ${defaultStaticConfig.location.district.en}.`,
-  facebookUrl: 'https://facebook.com',
-  youtubeUrl: 'https://youtube.com',
+  facebookUrl: '',
+  youtubeUrl: '',
   schoolType: defaultStaticConfig.type || 'kindergarten',
   themePreset: defaultStaticConfig.themePreset || 'dawn',
   eiin: defaultStaticConfig.eiin || '123456',
   mpoStatus: defaultStaticConfig.mpoStatus || 'এমপিওভুক্ত (MPO Enlisted)',
   schoolCode: defaultStaticConfig.schoolCode || `${defaultStaticConfig.applicationPrefix}-4509`,
   registrationNo: defaultStaticConfig.registrationNo || `${defaultStaticConfig.location.district.bn}/${defaultStaticConfig.location.upazila.bn}/২০১৬-৭৮`,
+  principalNameBn: defaultStaticConfig.principalMessage.author.bn,
+  principalNameEn: defaultStaticConfig.principalMessage.author.en,
+  principalTitleBn: defaultStaticConfig.principalMessage.title.bn,
+  principalTitleEn: defaultStaticConfig.principalMessage.title.en,
+  principalMessageBn: defaultStaticConfig.principalMessage.message.bn,
+  principalMessageEn: defaultStaticConfig.principalMessage.message.en,
   applyFields: defaultStaticConfig.apply.fields,
   map: {
     shareUrl: defaultStaticConfig.map.shareUrl,
@@ -264,8 +303,8 @@ const defaultSchoolSettings: SchoolSettingsData = {
 
 const initialFees = generateDefaultFeesForLevels(defaultStaticConfig.levels);
 const defaultFeeSettings: FeeSettingsData = {
-  bkashNumber: '01712-345678 (Personal)',
-  nagadNumber: '01823-987654 (Merchant)',
+  bkashNumber: '',
+  nagadNumber: '',
   paymentInstructionsBn: 'বিকাশ বা নগদ অ্যাপের "Send Money" অথবা "Payment" অপশন ব্যবহার করে নির্দিষ্ট ফি পরিশোধ করুন এবং নিচে Transaction ID দিন।',
   paymentInstructionsEn: 'Use bKash/Nagad "Send Money" or "Payment" to pay the admission fee and enter the TrxID below.',
   admissionFees: initialFees.admissionFees,
@@ -275,7 +314,7 @@ const defaultFeeSettings: FeeSettingsData = {
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
 
 export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isAdmin, isOwner } = useAuth();
+  const { user, isAdmin, isOwner, isDeveloper, effectiveOwnerEmail, refreshRole } = useAuth();
 
   const [schoolType, setSchoolTypeState] = useState<SchoolType>(() => {
     if (typeof window !== 'undefined') {
@@ -303,12 +342,20 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
   const [moderators, setModerators] = useState<AdminUserItem[]>([]);
+  const [smsSettings, setSmsSettings] = useState<SmsSettingsData>(DEFAULT_SMS_SETTINGS);
+  const [notificationQueue, setNotificationQueue] = useState<NotificationQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Computed levels & apply fields from active preset or custom config
   const activePreset = presets[schoolType] || presets.kindergarten;
-  const levels = (activePreset.levels || defaultStaticConfig.levels) as SchoolLevel[];
-  const applyFields = activePreset.apply?.fields || defaultStaticConfig.apply.fields;
+  const levels = useMemo(
+    () => (activePreset.levels || defaultStaticConfig.levels) as SchoolLevel[],
+    [activePreset]
+  );
+  const applyFields = useMemo(
+    () => activePreset.apply?.fields || defaultStaticConfig.apply.fields,
+    [activePreset]
+  );
 
   const switchPreset = (type: SchoolType) => {
     const preset = presets[type];
@@ -440,7 +487,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setApplications(JSON.parse(stored));
       }
     } catch (e) {
-      console.warn('Demo init error:', e);
+      if (import.meta.env.DEV) console.warn('Demo init error:', e);
     }
   }, [demoMode]);
 
@@ -455,7 +502,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
     } catch (e) {
-      console.warn('Demo status read error:', e);
+      if (import.meta.env.DEV) console.warn('Demo status read error:', e);
     }
     return null;
   };
@@ -475,7 +522,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       },
       (error) => {
-        console.warn('Settings snapshot fallback:', error);
+        if (import.meta.env.DEV) console.warn('Settings snapshot fallback:', error);
       }
     );
     return () => unsub();
@@ -491,7 +538,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       },
       (error) => {
-        console.warn('Fee settings fallback:', error);
+        if (import.meta.env.DEV) console.warn('Fee settings fallback:', error);
       }
     );
     return () => unsub();
@@ -508,7 +555,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         })) as NoticeItem[];
         setNotices(items);
       },
-      (error) => console.warn('Notices listener:', error)
+      (error) => {
+        if (import.meta.env.DEV) console.warn('Notices listener:', error);
+      }
     );
     return () => unsub();
   }, []);
@@ -541,7 +590,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setStaffList(staticStaff);
         }
       },
-      (error) => console.warn('Staff listener:', error)
+      (error) => {
+        if (import.meta.env.DEV) console.warn('Staff listener:', error);
+      }
     );
     return () => unsub();
   }, []);
@@ -576,7 +627,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setGalleryPhotos(initialPhotos);
         }
       },
-      (error) => console.warn('Gallery listener:', error)
+      (error) => {
+        if (import.meta.env.DEV) console.warn('Gallery listener:', error);
+      }
     );
     return () => unsub();
   }, []);
@@ -600,7 +653,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setApplications(items);
       },
       (error) => {
-        console.warn('Applications snapshot note (check admin status):', error);
+        if (import.meta.env.DEV) console.warn('Applications snapshot note (check admin status):', error);
       }
     );
     return () => unsub();
@@ -634,7 +687,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setInquiries(items);
       },
       (error) => {
-        console.warn('Inquiries snapshot note (check admin status):', error);
+        if (import.meta.env.DEV) console.warn('Inquiries snapshot note (check admin status):', error);
       }
     );
     return () => unsub();
@@ -670,18 +723,32 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       },
       (error) => {
-        console.warn('Testimonials listener fallback:', error);
+        if (import.meta.env.DEV) console.warn('Testimonials listener fallback:', error);
         setTestimonials(fallbackTestimonials);
       }
     );
     return () => unsub();
   }, []);
 
-  // 7. Live Sync Activity Logs & Moderators (Owner only)
+  // 7. Live Sync Activity Logs, Moderators, SMS Settings & Notification Queue
   useEffect(() => {
-    if (!isOwner) {
+    if (demoMode) {
+      try {
+        const storedSms = localStorage.getItem('school_demo_sms_settings');
+        if (storedSms) setSmsSettings(normalizeSmsSettings(JSON.parse(storedSms)));
+        const storedQueue = localStorage.getItem('school_demo_notification_queue');
+        if (storedQueue) setNotificationQueue(JSON.parse(storedQueue));
+      } catch {
+        // ignore storage read error
+      }
+      return;
+    }
+
+    if (!isOwner && !isDeveloper) {
       setActivityLogs([]);
       setModerators([]);
+      setSmsSettings(DEFAULT_SMS_SETTINGS);
+      setNotificationQueue([]);
       return;
     }
 
@@ -692,7 +759,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         items.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
         setActivityLogs(items);
       },
-      (error) => console.warn('Activity logs listener:', error)
+      (error) => {
+        if (import.meta.env.DEV) console.warn('Activity logs listener:', error);
+      }
     );
 
     const unsubAdmins = onSnapshot(
@@ -701,46 +770,123 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const items = snapshot.docs.map((d) => ({ ...d.data() })) as AdminUserItem[];
         setModerators(items);
       },
-      (error) => console.warn('Admins listener:', error)
+      (error) => {
+        if (import.meta.env.DEV) console.warn('Admins listener:', error);
+      }
+    );
+
+    if (!isOwner) {
+      setSmsSettings(DEFAULT_SMS_SETTINGS);
+      setNotificationQueue([]);
+      return () => {
+        unsubLogs();
+        unsubAdmins();
+      };
+    }
+
+    const unsubSms = onSnapshot(
+      doc(db, 'settings', 'sms'),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setSmsSettings(normalizeSmsSettings(docSnap.data() as Partial<SmsSettingsData>));
+        } else {
+          setSmsSettings(DEFAULT_SMS_SETTINGS);
+        }
+      },
+      (error) => {
+        if (import.meta.env.DEV) console.warn('SMS settings listener:', error);
+      }
+    );
+
+    const unsubQueue = onSnapshot(
+      collection(db, 'notification_queue'),
+      (snapshot) => {
+        const items = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as NotificationQueueItem[];
+        items.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        setNotificationQueue(items);
+      },
+      (error) => {
+        if (import.meta.env.DEV) console.warn('Notification queue listener:', error);
+      }
     );
 
     return () => {
       unsubLogs();
       unsubAdmins();
+      unsubSms();
+      unsubQueue();
     };
-  }, [isOwner]);
+  }, [isOwner, isDeveloper, demoMode]);
 
   useEffect(() => {
     setLoading(false);
   }, []);
 
   // Active Admission Notice Helper (falls back to inactive admission notice so admissionActive=false is respected)
-  const admissionNotice =
-    notices.find((n) => n.isAdmissionNotice && n.admissionActive) ||
-    notices.find((n) => n.isAdmissionNotice);
+  const admissionNotice = useMemo(
+    () =>
+      notices.find((n) => n.isAdmissionNotice && n.admissionActive) ||
+      notices.find((n) => n.isAdmissionNotice),
+    [notices]
+  );
 
-  // Activity Logger
+  // Activity Logger (conforms strictly to Firestore activity_logs schema & email match)
   const logActivity = async (action: string, details: string) => {
+    const actorEmail = (user?.email || '').trim().toLowerCase();
+    if (!actorEmail) return;
     try {
       await addDoc(collection(db, 'activity_logs'), {
-        action,
-        details,
-        performedByEmail: user?.email || 'admin@school.com',
+        action: action.trim().slice(0, 200) || 'Activity',
+        details: details.trim().slice(0, 1000) || 'Action performed',
+        performedByEmail: actorEmail,
         timestamp: new Date().toISOString(),
         createdAt: serverTimestamp(),
       });
     } catch (err) {
-      console.warn('Activity log write error:', err);
+      if (import.meta.env.DEV) console.warn('Activity log write error:', err);
     }
   };
 
   // Actions
   const updateSchoolSettings = async (newSettings: Partial<SchoolSettingsData>) => {
+    if (!isOwner && !isDeveloper && !demoMode) {
+      throw new Error('Only the school owner can update school identity settings.');
+    }
+    const merged: SchoolSettingsData = {
+      ...schoolSettings,
+      ...newSettings,
+      map: {
+        ...(schoolSettings.map || {}),
+        ...(newSettings.map || {}),
+      },
+      stats: {
+        ...(schoolSettings.stats || {}),
+        ...(newSettings.stats || {}),
+      },
+    };
+
+    // BUSINESS PROTECTION: Strip protected lock/ownership fields before normal
+    // Owner writes so Firestore rules cannot be tripped or bypassed.
+    const { ownershipLocked: _omitLocked, ownerEmail: _omitOwnerEmail, ...safePayload } =
+      merged as SchoolSettingsData & { ownerEmail?: string };
+
+    if (demoMode) {
+      setSchoolSettings(merged);
+      try {
+        localStorage.setItem('school_demo_settings', JSON.stringify(merged));
+      } catch {
+        // ignore storage quota errors
+      }
+      return;
+    }
+
     try {
-      const updated = { ...schoolSettings, ...newSettings };
-      await setDoc(doc(db, 'settings', 'school'), updated, { merge: true });
-      setSchoolSettings(updated);
-      await logActivity('বিদ্যালয়ের তথ্য পরিবর্তন', 'বিদ্যালয়ের সাধারণ তথ্য ও ব্র্যান্ডিং আপডেট করা হয়েছে।');
+      await setDoc(doc(db, 'settings', 'school'), safePayload, { merge: true });
+      setSchoolSettings(merged);
+      await logActivity('বিদ্যালয়ের পরিচিতি পরিবর্তন', 'বিদ্যালয়ের সাধারণ পরিচিতি, যোগাযোগ ও অধ্যক্ষের বাণী হালনাগাদ করা হয়েছে।');
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, 'settings/school');
     }
@@ -930,9 +1076,114 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const queueNotification = async (
+    payload: Omit<NotificationQueueItem, 'id' | 'createdAt'>
+  ): Promise<string> => {
+    const notifId = `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    if (demoMode) {
+      const item: NotificationQueueItem = {
+        ...payload,
+        id: notifId,
+        createdAt: { seconds: Math.floor(Date.now() / 1000) },
+      };
+      const existing: NotificationQueueItem[] = JSON.parse(
+        localStorage.getItem('school_demo_notification_queue') || '[]'
+      );
+      const updated = [item, ...existing].slice(0, 50);
+      localStorage.setItem('school_demo_notification_queue', JSON.stringify(updated));
+      setNotificationQueue(updated);
+      return notifId;
+    }
+
+    try {
+      await setDoc(doc(db, 'notification_queue', notifId), {
+        eventType: payload.eventType,
+        channel: 'sms',
+        recipientPhone: payload.recipientPhone,
+        recipientRole: payload.recipientRole,
+        message: payload.message.slice(0, 480),
+        applicationId: payload.applicationId || null,
+        applicationNo: payload.applicationNo || null,
+        studentName: payload.studentName || null,
+        appliedClass: payload.appliedClass || null,
+        targetStatus: payload.targetStatus || null,
+        gateway: payload.gateway,
+        status: payload.status,
+        createdByEmail: payload.createdByEmail,
+        createdAt: serverTimestamp(),
+      });
+      return notifId;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `notification_queue/${notifId}`);
+    }
+  };
+
+  const updateSmsSettings = async (newSms: Partial<SmsSettingsData>) => {
+    if (!isOwner && !demoMode) {
+      throw new Error('Only the school owner can update SMS automation settings.');
+    }
+    const normalized = normalizeSmsSettings({ ...smsSettings, ...newSms });
+    const record: SmsSettingsData = {
+      ...normalized,
+      updatedAt: new Date().toISOString(),
+      updatedBy: user?.email || 'owner',
+    };
+
+    if (demoMode) {
+      localStorage.setItem('school_demo_sms_settings', JSON.stringify(record));
+      setSmsSettings(record);
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, 'settings', 'sms'), record);
+      setSmsSettings(record);
+      await logActivity(
+        'SMS অটোমেশন সেটিংস পরিবর্তন',
+        `স্ট্যাটাস: ${record.enabled ? 'সক্রিয়' : 'নিষ্ক্রিয়'}, গেটওয়ে: ${record.gateway}`
+      );
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'settings/sms');
+    }
+  };
+
+  const deleteNotificationItem = async (notifId: string) => {
+    if (demoMode) {
+      const existing: NotificationQueueItem[] = JSON.parse(
+        localStorage.getItem('school_demo_notification_queue') || '[]'
+      );
+      const updated = existing.filter((item) => item.id !== notifId);
+      localStorage.setItem('school_demo_notification_queue', JSON.stringify(updated));
+      setNotificationQueue(updated);
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'notification_queue', notifId));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `notification_queue/${notifId}`);
+    }
+  };
+
   const updateApplicationStatus = async (appId: string, status: ApplicationItem['status'], notes?: string) => {
     const targetApp = applications.find((a) => a.id === appId);
     const appNumber = targetApp?.applicationNo;
+
+    const preparedNotif =
+      targetApp && targetApp.status !== status
+        ? prepareStatusNotificationPayload({
+            targetStatus: status,
+            phone: targetApp.guardianPhone,
+            studentName: targetApp.studentNameBn,
+            appliedClass: targetApp.appliedClass,
+            applicationId: appId,
+            applicationNo: targetApp.applicationNo,
+            schoolNameBn: schoolSettings.nameBn,
+            smsSettings: isOwner ? smsSettings : DEFAULT_SMS_SETTINGS,
+            actorEmail: user?.email || 'admin@school.com',
+          })
+        : null;
 
     if (demoMode) {
       const existingApps: ApplicationItem[] = JSON.parse(localStorage.getItem('school_demo_applications') || '[]');
@@ -953,6 +1204,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           localStorage.setItem('school_demo_app_status', JSON.stringify(statusMap));
         }
       }
+
+      if (preparedNotif) {
+        await queueNotification(preparedNotif);
+      }
       return;
     }
 
@@ -970,6 +1225,18 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           { status, updatedAt: serverTimestamp() },
           { merge: true }
         );
+      }
+
+      // Prepare SMS notification payload in notification_queue for future Cloud Function dispatch
+      if (preparedNotif && user?.email) {
+        try {
+          await queueNotification({
+            ...preparedNotif,
+            createdByEmail: user.email,
+          });
+        } catch (queueErr) {
+          if (import.meta.env.DEV) console.warn('Notification queue preparation note:', queueErr);
+        }
       }
 
       await logActivity('আবেদনের স্ট্যাটাস পরিবর্তন', `আবেদন নং ${appNumber || appId} এর স্ট্যাটাস '${status}' করা হয়েছে।`);
@@ -1034,6 +1301,91 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await logActivity('মডারেটর অব্যাহতি', `Gmail: ${cleanEmail} এর মডারেটর পদ প্রত্যাহার করা হয়েছে।`);
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `admins/${cleanEmail}`);
+    }
+  };
+
+  /**
+   * BUSINESS PROTECTION — DEVELOPER-ONLY OWNERSHIP TRANSFER & LOCK:
+   * Only accounts in `DEVELOPER_EMAILS` (`isDeveloper === true`) may assign or
+   * change `ownerEmail`. Once assigned to a real school Principal (non-developer),
+   * `ownershipLocked` is set to `true` in both `/settings/ownership` and
+   * `/settings/school`. Normal school Owners cannot execute or bypass this.
+   */
+  const transferOwnership = async (newOwnerEmail: string) => {
+    const cleanNew = newOwnerEmail.trim().toLowerCase();
+    const cleanOld = (effectiveOwnerEmail || '').trim().toLowerCase();
+    const developerActor = (user?.email || '').trim().toLowerCase();
+
+    if (!isDeveloper && !demoMode) {
+      throw new Error('Ownership transfer is restricted strictly to authorized developer accounts.');
+    }
+    if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(cleanNew)) {
+      throw new Error('Please enter a valid Google email address.');
+    }
+    if (cleanNew === cleanOld) {
+      throw new Error('New owner Gmail must be different from the current owner Gmail.');
+    }
+
+    const willLock = !isDeveloperEmail(cleanNew);
+
+    if (demoMode) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('school_demo_owner_email', cleanNew);
+        localStorage.setItem('school_demo_ownership_locked', willLock ? 'true' : 'false');
+      }
+      await refreshRole();
+      return;
+    }
+
+    try {
+      // 1. Grant owner role in admins/{newOwner}
+      await setDoc(doc(db, 'admins', cleanNew), {
+        email: cleanNew,
+        role: 'owner',
+        addedBy: developerActor,
+        addedAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+      });
+
+      // 2. Remove previous owner's admins entry if different (single owner at a time)
+      if (cleanOld && cleanOld !== cleanNew) {
+        try {
+          await deleteDoc(doc(db, 'admins', cleanOld));
+        } catch (cleanupErr) {
+          if (import.meta.env.DEV) console.warn('Previous owner admin cleanup note:', cleanupErr);
+        }
+      }
+
+      // 3. Persist ownershipLocked flag in settings/school (Developer-only rule permits this)
+      await setDoc(
+        doc(db, 'settings', 'school'),
+        { ownershipLocked: willLock },
+        { merge: true }
+      );
+
+      // 4. Write single-owner pointer & lock in settings/ownership (Developer-only in Firestore rules)
+      await setDoc(doc(db, 'settings', 'ownership'), {
+        ownerEmail: cleanNew,
+        ownershipLocked: willLock,
+        previousOwnerEmail: cleanOld,
+        transferredBy: developerActor,
+        transferredAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      // 5. Record clear developer audit log in activity_logs
+      await addDoc(collection(db, 'activity_logs'), {
+        action: 'ডেভেলপার কর্তৃক মালিকানা হস্তান্তর ও লক (Developer Ownership Lock)',
+        details: `Developer (${developerActor}) changed ownerEmail from ${cleanOld || 'initial'} to ${cleanNew}. ownershipLocked=${willLock ? 'true' : 'false'}.`,
+        performedByEmail: developerActor,
+        timestamp: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+      });
+
+      // 6. Refresh AuthContext role and ownership state immediately
+      await refreshRole();
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'settings/ownership');
     }
   };
 
@@ -1152,51 +1504,81 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const contextValue = useMemo<SchoolDataContextType>(
+    () => ({
+      schoolSettings,
+      feeSettings,
+      schoolType,
+      themePreset,
+      levels,
+      applyFields,
+      notices,
+      admissionNotice,
+      staffList,
+      galleryPhotos,
+      applications,
+      inquiries,
+      testimonials,
+      activityLogs,
+      moderators,
+      smsSettings,
+      notificationQueue,
+      loading,
+      demoMode,
+      setDemoMode,
+      getDemoApplicationStatus,
+      switchPreset,
+      switchTheme,
+      updateSchoolSettings,
+      updateFeeSettings,
+      saveNotice,
+      deleteNotice,
+      saveStaff,
+      deleteStaff,
+      saveGalleryPhoto,
+      deleteGalleryPhoto,
+      submitApplication,
+      updateApplicationStatus,
+      deleteApplication,
+      submitInquiry,
+      updateInquiryStatus,
+      deleteInquiry,
+      saveTestimonial,
+      deleteTestimonial,
+      updateSmsSettings,
+      queueNotification,
+      deleteNotificationItem,
+      addModerator,
+      removeModerator,
+      transferOwnership,
+      logActivity,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      schoolSettings,
+      feeSettings,
+      schoolType,
+      themePreset,
+      levels,
+      applyFields,
+      notices,
+      admissionNotice,
+      staffList,
+      galleryPhotos,
+      applications,
+      inquiries,
+      testimonials,
+      activityLogs,
+      moderators,
+      smsSettings,
+      notificationQueue,
+      loading,
+      demoMode,
+    ]
+  );
+
   return (
-    <SchoolDataContext.Provider
-      value={{
-        schoolSettings,
-        feeSettings,
-        schoolType,
-        themePreset,
-        levels,
-        applyFields,
-        notices,
-        admissionNotice,
-        staffList,
-        galleryPhotos,
-        applications,
-        inquiries,
-        testimonials,
-        activityLogs,
-        moderators,
-        loading,
-        demoMode,
-        setDemoMode,
-        getDemoApplicationStatus,
-        switchPreset,
-        switchTheme,
-        updateSchoolSettings,
-        updateFeeSettings,
-        saveNotice,
-        deleteNotice,
-        saveStaff,
-        deleteStaff,
-        saveGalleryPhoto,
-        deleteGalleryPhoto,
-        submitApplication,
-        updateApplicationStatus,
-        deleteApplication,
-        submitInquiry,
-        updateInquiryStatus,
-        deleteInquiry,
-        saveTestimonial,
-        deleteTestimonial,
-        addModerator,
-        removeModerator,
-        logActivity,
-      }}
-    >
+    <SchoolDataContext.Provider value={contextValue}>
       {children}
     </SchoolDataContext.Provider>
   );

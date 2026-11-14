@@ -192,7 +192,7 @@ export const CurriculumJourney: React.FC<CurriculumJourneyProps> = ({ onSelectCl
                           isSelected
                             ? 'bg-primary-600 text-on-primary border-primary-700 shadow-lg scale-105 -translate-y-1'
                             : isPassed
-                            ? 'bg-primary-100 dark:bg-surface-2 text-primary-800 dark:text-primary-200 border-primary-300 dark:border-line/40 hover:bg-primary-200'
+                            ? 'bg-primary-100 dark:bg-surface-2 text-primary-800 dark:text-primary-200 border-primary-300 dark:border-line/40 hover:bg-primary-200 dark:hover:bg-surface-card'
                             : 'bg-surface-card text-ink-muted border-line/35 hover:border-line'
                         }`}
                       >
@@ -219,7 +219,7 @@ export const CurriculumJourney: React.FC<CurriculumJourneyProps> = ({ onSelectCl
                           isSelected
                             ? 'bg-primary-600 text-on-primary border-primary-700 shadow-lg scale-110 -translate-y-1'
                             : isPassed
-                            ? 'bg-primary-100 dark:bg-surface-2 text-primary-900 dark:text-primary-200 border-primary-300 dark:border-line/40 hover:bg-primary-200 hover:scale-105'
+                            ? 'bg-primary-100 dark:bg-surface-2 text-primary-900 dark:text-primary-200 border-primary-300 dark:border-line/40 hover:bg-primary-200 dark:hover:bg-surface-card hover:scale-105'
                             : 'bg-surface-card text-ink-muted border-line/30 hover:border-line'
                         }`}
                       >
@@ -344,7 +344,7 @@ export const CurriculumJourney: React.FC<CurriculumJourneyProps> = ({ onSelectCl
                   type="button"
                   onClick={handlePrev}
                   disabled={currentIndex === 0}
-                  className="p-2 rounded-[var(--radius-btn)] border border-line/35 bg-surface-2 text-ink hover:bg-primary-50 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-btn)] border border-line/35 bg-surface-2 text-ink hover:bg-surface disabled:opacity-25 disabled:pointer-events-none transition-colors"
                   aria-label="Previous Class"
                   title="পূর্ববর্তী শ্রেণি"
                 >
@@ -359,7 +359,7 @@ export const CurriculumJourney: React.FC<CurriculumJourneyProps> = ({ onSelectCl
                   type="button"
                   onClick={handleNext}
                   disabled={currentIndex === levels.length - 1}
-                  className="p-2 rounded-[var(--radius-btn)] border border-line/35 bg-surface-2 text-ink hover:bg-primary-50 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--radius-btn)] border border-line/35 bg-surface-2 text-ink hover:bg-surface disabled:opacity-25 disabled:pointer-events-none transition-colors"
                   aria-label="Next Class"
                   title="পরবর্তী শ্রেণি"
                 >

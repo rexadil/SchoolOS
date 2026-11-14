@@ -14,24 +14,60 @@
     },
     "SchoolSettings": {
       "title": "SchoolSettings",
-      "description": "Configurable school profile, branding, contacts, and hero banner texts",
+      "description": "Owner-editable school identity, location, contacts, map coordinates, official codes, principal message, and hero caption stored in Firestore",
       "type": "object",
       "properties": {
         "nameBn": { "type": "string" },
         "nameEn": { "type": "string" },
+        "shortNameBn": { "type": "string" },
+        "shortNameEn": { "type": "string" },
         "sloganBn": { "type": "string" },
         "sloganEn": { "type": "string" },
         "addressLine": { "type": "string" },
+        "area": { "type": "string" },
+        "upazila": { "type": "string" },
+        "district": { "type": "string" },
+        "postCode": { "type": "string" },
         "phonePrimary": { "type": "string" },
         "phoneSecondary": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
         "email": { "type": "string" },
+        "facebookUrl": { "type": "string" },
+        "youtubeUrl": { "type": "string" },
         "logoUrl": { "type": "string" },
         "themeColor": { "type": "string" },
         "heroTitleBn": { "type": "string" },
         "heroTitleEn": { "type": "string" },
         "heroSubtitleBn": { "type": "string" },
-        "heroSubtitleEn": { "type": "string" }
+        "heroSubtitleEn": { "type": "string" },
+        "eiin": { "type": "string" },
+        "mpoStatus": { "type": "string" },
+        "schoolCode": { "type": "string" },
+        "registrationNo": { "type": "string" },
+        "ownershipLocked": { "type": "boolean", "description": "Read-only lock flag set to true after developer assigns the first school Owner; cannot be changed by normal Owners" },
+        "principalNameBn": { "type": "string" },
+        "principalNameEn": { "type": "string" },
+        "principalTitleBn": { "type": "string" },
+        "principalTitleEn": { "type": "string" },
+        "principalMessageBn": { "type": "string" },
+        "principalMessageEn": { "type": "string" },
+        "map": { "type": "object" },
+        "stats": { "type": "object" }
       }
+    },
+    "OwnershipConfig": {
+      "title": "OwnershipConfig",
+      "description": "Single active Owner Gmail pointer and ownership lock flag, modifiable strictly by authorized Developer accounts only",
+      "type": "object",
+      "properties": {
+        "ownerEmail": { "type": "string" },
+        "ownershipLocked": { "type": "boolean" },
+        "previousOwnerEmail": { "type": "string" },
+        "transferredBy": { "type": "string" },
+        "transferredAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["ownerEmail", "ownershipLocked", "updatedAt"]
     },
     "FeeSettings": {
       "title": "FeeSettings",
@@ -211,7 +247,11 @@
     },
     "/settings/school": {
       "schema": { "$ref": "#/entities/SchoolSettings" },
-      "description": "Core school profile and styling"
+      "description": "Core school identity, location, contacts, principal message & map (Owner writable)"
+    },
+    "/settings/ownership": {
+      "schema": { "$ref": "#/entities/OwnershipConfig" },
+      "description": "Active single-owner pointer for Principal handover"
     },
     "/settings/fees": {
       "schema": { "$ref": "#/entities/FeeSettings" },
